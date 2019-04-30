@@ -16,11 +16,14 @@ import static semantic.util.constants.OntologyConstants.HIGH_CLASSES_URI;
 import static semantic.util.constants.OntologyConstants.POINT_OF_INTEREST_URI;
 
 public class SemanticNetworkTests {
-    private SemanticNetwork semanticNetwork;
+    static private SemanticNetwork semanticNetwork;
 
-    @Before
-    public void setUp() throws IOException {
-        semanticNetwork = new SemanticNetwork();
+    static {
+        try {
+            semanticNetwork = new SemanticNetwork();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Test

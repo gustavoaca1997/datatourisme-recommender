@@ -9,11 +9,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static semantic.util.constants.OntologyConstants.MODEL_FILE;
-import static semantic.util.constants.OntologyConstants.POINT_OF_INTEREST_URI;
 
 @Data
 public class SemanticNetwork implements Iterable {
