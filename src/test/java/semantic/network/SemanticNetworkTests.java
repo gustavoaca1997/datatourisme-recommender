@@ -2,12 +2,15 @@ package semantic.network;
 
 
 import org.apache.jena.ontology.OntClass;
+import org.apache.jena.rdf.model.Resource;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.stream.Collectors;
 
 import static semantic.util.constants.OntologyConstants.HIGH_CLASSES_URI;
 import static semantic.util.constants.OntologyConstants.POINT_OF_INTEREST_URI;
@@ -16,13 +19,13 @@ public class SemanticNetworkTests {
     private SemanticNetwork semanticNetwork;
 
     @Before
-    public void setUp() {
+    public void setUp() throws IOException {
         semanticNetwork = new SemanticNetwork();
     }
 
     @Test
-    public void readModelTest() throws IOException  {
-        Assert.assertTrue("Failed to read ontology", semanticNetwork.read());
+    public void readModelTest()  {
+        Assert.assertNotNull("Failed to read ontology", semanticNetwork.getOntModel());
     }
 
     @Test
@@ -44,6 +47,11 @@ public class SemanticNetworkTests {
         Iterator<OntClass> iterator = semanticNetwork.iterator();
         OntClass root = iterator.next();
         Assert.assertEquals("High classes don't match",
-                HIGH_CLASSES_URI, root.listSubClasses());
+                new HashSet<>(HIGH_CLASSES_URI),
+                root.listSubClasses(true)
+                        .toSet()
+                        .stream()
+                        .map(Resource::getURI)
+                        .collect(Collectors.toSet()));
     }
 }

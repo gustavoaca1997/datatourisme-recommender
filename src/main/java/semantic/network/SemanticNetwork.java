@@ -8,23 +8,33 @@ import org.apache.jena.rdf.model.ModelFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static semantic.util.constants.OntologyConstants.MODEL_FILE;
+import static semantic.util.constants.OntologyConstants.POINT_OF_INTEREST_URI;
 
 @Data
 public class SemanticNetwork implements Iterable {
     private OntModel ontModel;
 
-    public SemanticNetwork() {
+    SemanticNetwork() throws IOException {
         ontModel = ModelFactory.createOntologyModel();
+        this.read();
     }
 
-    public boolean read() throws IOException {
+    public SemanticNetwork(String file) throws IOException {
+        ontModel = ModelFactory.createOntologyModel();
+        this.read(file);
+    }
+
+    private boolean read() throws IOException {
         readOntology(MODEL_FILE, ontModel);
         return true;
     }
 
-    public boolean read(String file) throws IOException {
+    private boolean read(String file) throws IOException {
         readOntology(file, ontModel);
         return true;
     }
@@ -33,9 +43,8 @@ public class SemanticNetwork implements Iterable {
         return new SemanticNetworkIterator(this);
     }
 
-    public static void readOntology( String file, OntModel model ) throws IOException {
-        InputStream in = ClassLoader.getSystemClassLoader().getResource(file).openStream();
-        System.out.println(ClassLoader.getSystemClassLoader().getResource(file).getFile());
+    private static void readOntology(String file, OntModel model) throws IOException {
+        InputStream in = Objects.requireNonNull(ClassLoader.getSystemClassLoader().getResource(file)).openStream();
         model.read(in, null, "TTL");
         in.close();
     }
