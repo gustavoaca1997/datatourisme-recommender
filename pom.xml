@@ -17,6 +17,26 @@
                     <target>8</target>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>4.0.3</version>
+                <configuration>
+                    <user>root</user>
+                    <password>datatourisme</password>
+                    <schemas>
+                        <schema>
+                            recommenderdb
+                        </schema>
+                    </schemas>
+                    <url>jdbc:mysql://localhost/recommenderdb</url>
+                    <locations>
+                        <location>/flyway/db/mysql/migration</location>
+                    </locations>
+
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -45,6 +65,19 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
             <version>1.7.26</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>5.4.2.Final</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.16</version>
         </dependency>
     </dependencies>
 </project>
