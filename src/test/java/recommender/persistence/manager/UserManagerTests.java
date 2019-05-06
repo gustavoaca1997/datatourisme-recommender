@@ -1,9 +1,7 @@
 package recommender.persistence.manager;
 
 import org.junit.*;
-import recommender.persistence.manager.dto.user.CreateDTO;
-import recommender.persistence.manager.dto.user.GetDTO;
-import recommender.persistence.manager.dto.user.UpdateDTO;
+import recommender.persistence.entity.User;
 
 import java.util.Arrays;
 import java.util.List;
@@ -29,23 +27,23 @@ public class UserManagerTests {
 
     @Test
     public void addUserTest() {
-        CreateDTO createDTO = CreateDTO.builder()
+        User user = User.builder()
                 .username("gustavoaca")
                 .build();
-        Integer uid = userManager.addUser(createDTO);
+        Integer uid = userManager.addUser(user);
         Assert.assertNotNull("User's id is null", uid);
     }
 
     @Test
-    public void getUserTest() {
-        CreateDTO createDTO = CreateDTO.builder()
+    public void getUserTest() throws Exception {
+        User user = User.builder()
                 .username("gustavoaca")
                 .build();
-        Integer uid = userManager.addUser(createDTO);
-        GetDTO getDTO = userManager.getUser(uid);
-        Assert.assertNotNull("DTO is null", getDTO);
+        Integer uid = userManager.addUser(user);
+        User fetchedUser = userManager.getUser(uid).orElseThrow(
+                () -> new Exception("An error occurred retrieving user"));
         Assert.assertEquals("Usernames don't match",
-                "gustavoaca", getDTO.getUsername());
+                "gustavoaca", fetchedUser.getUsername());
     }
 
     @Test(expected = NoSuchElementException.class)
@@ -55,27 +53,27 @@ public class UserManagerTests {
 
     @Test
     public void listUsersTest() {
-        List<CreateDTO> createDTOS = Arrays.asList(
-                CreateDTO.builder()
+        List<User> createdUsers = Arrays.asList(
+                User.builder()
                         .username("gustavoaca")
                         .build(),
-                CreateDTO.builder()
+                User.builder()
                         .username("lisalfonzo")
                         .build(),
-                CreateDTO.builder()
+                User.builder()
                         .username("gcastellanos")
                         .build()
         );
-        createDTOS.forEach(
+        createdUsers.forEach(
                 user -> userManager.addUser(user));
 
-        List<GetDTO> getDTOS = userManager.listUsers();
-        Assert.assertNotNull("List of users is null", getDTOS);
+        List<User> fetchedUsers = userManager.listUsers();
+        Assert.assertNotNull("List of users is null", fetchedUsers);
 
-        List<String> usernames = getDTOS.stream()
-                .map(GetDTO::getUsername).collect(Collectors.toList());
+        List<String> usernames = fetchedUsers.stream()
+                .map(User::getUsername).collect(Collectors.toList());
 
-        createDTOS.forEach(
+        createdUsers.forEach(
                 user ->
                         Assert.assertTrue(
                                 String.format("Username %s is not in the list",
@@ -85,16 +83,16 @@ public class UserManagerTests {
 
     @Test(expected = NoSuchElementException.class)
     public void deleteUserTest() {
-        CreateDTO createDTO = CreateDTO.builder()
+        User createdUser = User.builder()
                 .username("gustavoaca")
                 .build();
-        Integer uid = userManager.addUser(createDTO);
+        Integer uid = userManager.addUser(createdUser);
         userManager.deleteUser(uid);
         try {
             userManager.getUser(uid);
         } catch (NoSuchElementException e) {
             Assert.assertEquals("Error messages don't match",
-                    String.format("User with id %s not found.", uid),
+                    String.format("User with id %s not found", uid),
                     e.getMessage());
             throw e;
         }
@@ -106,30 +104,30 @@ public class UserManagerTests {
     }
 
     @Test
-    public void updateUserTest() {
-        CreateDTO createDTO = CreateDTO.builder()
+    public void updateUserTest() throws Exception {
+        User createdUser = User.builder()
                 .username("gustavoaca")
                 .build();
-        Integer uid = userManager.addUser(createDTO);
-        UpdateDTO updateDTO = UpdateDTO.updateBuilder()
+        Integer uid = userManager.addUser(createdUser);
+        User updatedUser = User.builder()
                 .username("gcastellanos")
                 .uid(uid)
                 .build();
-        userManager.updateUser(updateDTO);
+        userManager.updateUser(updatedUser);
 
-        GetDTO getDTO = userManager.getUser(uid);
-        Assert.assertNotNull("User is null", getDTO);
+        User fetchedUser = userManager.getUser(uid).orElseThrow(
+                () -> new Exception("An error occurred retrieving user"));
         Assert.assertEquals("Usernames don't match",
                 "gcastellanos",
-                getDTO.getUsername());
+                fetchedUser.getUsername());
     }
 
     @Test(expected = NoSuchElementException.class)
     public void updateUserNotFoundTest() {
-        UpdateDTO updateDTO = UpdateDTO.updateBuilder()
+        User updatedUser = User.builder()
                 .username("gcastellanos")
                 .uid(0)
                 .build();
-        userManager.updateUser(updateDTO);
+        userManager.updateUser(updatedUser);
     }
 }

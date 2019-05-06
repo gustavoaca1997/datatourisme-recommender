@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -22,4 +23,7 @@ public class User {
 
     @Column(name = "username", unique = true, nullable = false)
     private String username;
+
+    @OneToMany(mappedBy = "user")
+    private Set<ClassProperties> classPropertiesSet;
 }

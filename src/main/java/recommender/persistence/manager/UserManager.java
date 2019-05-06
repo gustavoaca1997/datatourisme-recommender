@@ -4,35 +4,28 @@ import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import recommender.persistence.entity.User;
-import recommender.persistence.manager.dto.user.CreateDTO;
-import recommender.persistence.manager.dto.user.GetDTO;
-import recommender.persistence.manager.dto.user.UpdateDTO;
-import recommender.persistence.manager.mapper.UserMapper;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
-class UserManager extends AbstractManager {
+class UserManager {
     UserManager() {
-        super(User.class);
     }
 
     /**
      * Add a new user with `username`.
      *
-     * @param createDTO a DTO with the username
+     * @param user an entity with the user's fields
      * @return New user's id
      */
-    Integer addUser(CreateDTO createDTO) {
+    Integer addUser(User user) {
         Transaction tx = null;
         Integer userID = null;
 
-        try (Session session = factory.openSession()) {
+        try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
-            User user = UserMapper.fromDTO(createDTO);
             userID = (Integer) session.save(user);
             tx.commit();
         } catch (HibernateException e) {
@@ -45,13 +38,13 @@ class UserManager extends AbstractManager {
     /**
      * List all users.
      *
-     * @return List of {@link GetDTO User DTO}
+     * @return List of {@link User User}
      */
     @SuppressWarnings("unchecked")
-    List<GetDTO> listUsers() {
+    List<User> listUsers() {
         Transaction tx = null;
         List<User> users = new ArrayList<>();
-        try (Session session = factory.openSession()) {
+        try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
             users = session.createQuery("FROM User").list();
             tx.commit();
@@ -59,34 +52,35 @@ class UserManager extends AbstractManager {
             if (tx != null) tx.rollback();
             e.printStackTrace();
         }
-        return users.stream()
-                .map(UserMapper::toDTO)
-                .collect(Collectors.toList());
+        return users;
     }
 
     /**
      * Get user by id.
      *
      * @param uid unique identifier of the user.
-     * @return A {@link GetDTO DTO} corresponding to the user.
+     * @return A {@link Optional<User> User} corresponding to the user.
      * @throws NoSuchElementException if there is not such user.
      */
-    GetDTO getUser(Integer uid) throws NoSuchElementException {
+    Optional<User> getUser(Integer uid) {
         Transaction tx = null;
         User user = null;
-        try (Session session = factory.openSession()) {
+        try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
             user = session.get(User.class, uid);
+            if (user == null) {
+                throw new
+                        NoSuchElementException(String.format(
+                        "User with id %s not found",
+                        uid
+                ));
+            }
             tx.commit();
         } catch (HibernateException e) {
             if (tx != null) tx.rollback();
             e.printStackTrace();
         }
-        return Optional.ofNullable(user)
-                .map(UserMapper::toDTO)
-                .orElseThrow(
-                        () -> new NoSuchElementException(
-                                String.format("User with id %s not found.", uid)));
+        return Optional.ofNullable(user);
     }
 
     /**
@@ -97,18 +91,10 @@ class UserManager extends AbstractManager {
      */
     void deleteUser(Integer uid) throws NoSuchElementException {
         Transaction tx = null;
-        User user;
-        try (Session session = factory.openSession()) {
+        try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
-            user = session.get(User.class, uid);
-
-            if (user == null) {
-                throw new NoSuchElementException(
-                        String.format("User with id %s not found.", uid));
-            } else {
-                session.delete(user);
-            }
-
+            Optional<User> user = getUser(uid);
+            user.ifPresent(session::delete);
             tx.commit();
         } catch (HibernateException e) {
             if (tx != null) tx.rollback();
@@ -119,24 +105,20 @@ class UserManager extends AbstractManager {
     /**
      * Update user by id
      *
-     * @param updateDTO a DTO with the new properties.
+     * @param updatedUser an object with new fields
      * @throws NoSuchElementException if there is not such user
      */
-    void updateUser(UpdateDTO updateDTO) throws NoSuchElementException {
+    void updateUser(User updatedUser) throws NoSuchElementException {
         Transaction tx = null;
-        User user;
-        Integer uid = updateDTO.getUid();
+        Integer uid = updatedUser.getUid();
 
-        try (Session session = factory.openSession()) {
+        try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
-            user = session.get(User.class, uid);
-
-            if (user == null) {
-                throw new NoSuchElementException(
-                        String.format("User with id %s not found.", uid));
-            } else {
-                UserMapper.fromDTO(user, updateDTO);
-                session.update(user);
+            Optional<User> user = getUser(uid);
+            if (user.isPresent()) {
+                User entity = user.get();
+                entity.setUsername(updatedUser.getUsername());
+                session.update(entity);
             }
             tx.commit();
         } catch (HibernateException e) {
@@ -144,5 +126,4 @@ class UserManager extends AbstractManager {
             e.printStackTrace();
         }
     }
-
 }
