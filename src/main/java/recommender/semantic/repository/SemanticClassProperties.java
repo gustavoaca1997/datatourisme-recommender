@@ -1,4 +1,4 @@
-package semantic.repository;
+package recommender.semantic.repository;
 
 public class SemanticClassProperties {
     private double preference;

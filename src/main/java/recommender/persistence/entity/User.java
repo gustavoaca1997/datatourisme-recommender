@@ -1,4 +1,4 @@
-package jpa.entity;
+package recommender.persistence.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

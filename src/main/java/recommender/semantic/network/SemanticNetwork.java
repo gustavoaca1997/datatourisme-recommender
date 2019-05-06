@@ -1,16 +1,15 @@
-package semantic.network;
+package recommender.semantic.network;
 
 import lombok.Data;
 import org.apache.jena.ontology.OntClass;
 import org.apache.jena.ontology.OntModel;
 import org.apache.jena.rdf.model.ModelFactory;
+import recommender.semantic.util.constants.OntologyConstants;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Objects;
-
-import static semantic.util.constants.OntologyConstants.MODEL_FILE;
 
 @Data
 public class SemanticNetwork implements Iterable {
@@ -27,7 +26,7 @@ public class SemanticNetwork implements Iterable {
     }
 
     private boolean read() throws IOException {
-        readOntology(MODEL_FILE, ontModel);
+        readOntology(OntologyConstants.MODEL_FILE, ontModel);
         return true;
     }
 

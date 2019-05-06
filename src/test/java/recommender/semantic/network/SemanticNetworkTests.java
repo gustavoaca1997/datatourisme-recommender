@@ -1,10 +1,9 @@
-package semantic.network;
+package recommender.semantic.network;
 
 
 import org.apache.jena.ontology.OntClass;
 import org.apache.jena.rdf.model.Resource;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -12,8 +11,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.stream.Collectors;
 
-import static semantic.util.constants.OntologyConstants.HIGH_CLASSES_URI;
-import static semantic.util.constants.OntologyConstants.POINT_OF_INTEREST_URI;
+import static recommender.semantic.util.constants.OntologyConstants.HIGH_CLASSES_URI;
+import static recommender.semantic.util.constants.OntologyConstants.POINT_OF_INTEREST_URI;
 
 public class SemanticNetworkTests {
     static private SemanticNetwork semanticNetwork;

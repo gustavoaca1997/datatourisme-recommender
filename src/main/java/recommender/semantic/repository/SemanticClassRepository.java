@@ -1,4 +1,4 @@
-package semantic.repository;
+package recommender.semantic.repository;
 
 import org.apache.jena.ontology.OntClass;
 
@@ -9,7 +9,7 @@ public class SemanticClassRepository {
     private Map<OntClass, SemanticClassProperties> propertiesDict;
 
     public SemanticClassRepository() {
-        propertiesDict = new HashMap<OntClass, SemanticClassProperties>();
+        propertiesDict = new HashMap<>();
     }
 
     public SemanticClassProperties get(OntClass ontClass) {
