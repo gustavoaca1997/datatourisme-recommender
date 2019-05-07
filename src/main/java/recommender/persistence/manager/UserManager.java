@@ -29,8 +29,8 @@ class UserManager {
             userID = (Integer) session.save(user);
             tx.commit();
         } catch (HibernateException e) {
-            if (tx != null) tx.rollback();
             e.printStackTrace();
+            if (tx != null) tx.rollback();
         }
         return userID;
     }
@@ -49,8 +49,8 @@ class UserManager {
             users = session.createQuery("FROM User").list();
             tx.commit();
         } catch (HibernateException e) {
-            if (tx != null) tx.rollback();
             e.printStackTrace();
+            if (tx != null) tx.rollback();
         }
         return users;
     }
@@ -62,9 +62,9 @@ class UserManager {
      * @return A {@link Optional<User> User} corresponding to the user.
      * @throws NoSuchElementException if there is not such user.
      */
-    Optional<User> getUser(Integer uid) {
+    User getUser(Integer uid) {
         Transaction tx = null;
-        User user = null;
+        User user;
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
             user = session.get(User.class, uid);
@@ -77,28 +77,28 @@ class UserManager {
             }
             tx.commit();
         } catch (HibernateException e) {
-            if (tx != null) tx.rollback();
             e.printStackTrace();
+            if (tx != null) tx.rollback();
+            throw e;
         }
-        return Optional.ofNullable(user);
+        return user;
     }
 
     /**
-     * Delete user by id.
-     *
-     * @param uid unique identifier of the user
-     * @throws NoSuchElementException if there is not such user
+     * Delete user by id
+     * @param uid id of user to be deleted
      */
-    void deleteUser(Integer uid) throws NoSuchElementException {
+    void deleteUser(Integer uid) {
         Transaction tx = null;
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
-            Optional<User> user = getUser(uid);
-            user.ifPresent(session::delete);
+            User user = Optional.ofNullable(session.get(User.class, uid))
+                    .orElseThrow(NoSuchElementException::new);
+            session.delete(user);
             tx.commit();
         } catch (HibernateException e) {
-            if (tx != null) tx.rollback();
             e.printStackTrace();
+            if (tx != null) tx.rollback();
         }
     }
 
@@ -110,20 +110,21 @@ class UserManager {
      */
     void updateUser(User updatedUser) throws NoSuchElementException {
         Transaction tx = null;
-        Integer uid = updatedUser.getUid();
 
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
-            Optional<User> user = getUser(uid);
-            if (user.isPresent()) {
-                User entity = user.get();
-                entity.setUsername(updatedUser.getUsername());
-                session.update(entity);
+            Integer uid = updatedUser.getUid();
+            if (session.get(User.class, uid) == null) {
+                throw new NoSuchElementException(
+                        String.format(
+                                "User with id %s not found",
+                                uid));
             }
+            session.merge(updatedUser);
             tx.commit();
         } catch (HibernateException e) {
-            if (tx != null) tx.rollback();
             e.printStackTrace();
+            if (tx != null) tx.rollback();
         }
     }
 }

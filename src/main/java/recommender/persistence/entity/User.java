@@ -1,17 +1,15 @@
 package recommender.persistence.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import javax.persistence.*;
 import java.util.Set;
 
-@Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Getter
+@Setter
 @Entity
 @Table(name = "user")
 public class User {
@@ -24,6 +22,6 @@ public class User {
     @Column(name = "username", unique = true, nullable = false)
     private String username;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
     private Set<ClassProperties> classPropertiesSet;
 }

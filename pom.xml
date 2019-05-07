@@ -31,9 +31,6 @@
                         </schema>
                     </schemas>
                     <url>jdbc:mysql://localhost/recommenderdb</url>
-                    <locations>
-                        <location>/flyway/db/mysql/migration</location>
-                    </locations>
 
                 </configuration>
             </plugin>

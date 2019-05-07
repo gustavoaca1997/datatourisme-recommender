@@ -35,13 +35,12 @@ public class UserManagerTests {
     }
 
     @Test
-    public void getUserTest() throws Exception {
+    public void getUserTest() {
         User user = User.builder()
                 .username("gustavoaca")
                 .build();
         Integer uid = userManager.addUser(user);
-        User fetchedUser = userManager.getUser(uid).orElseThrow(
-                () -> new Exception("An error occurred retrieving user"));
+        User fetchedUser = userManager.getUser(uid);
         Assert.assertEquals("Usernames don't match",
                 "gustavoaca", fetchedUser.getUsername());
     }
@@ -104,7 +103,7 @@ public class UserManagerTests {
     }
 
     @Test
-    public void updateUserTest() throws Exception {
+    public void updateUserTest() {
         User createdUser = User.builder()
                 .username("gustavoaca")
                 .build();
@@ -115,14 +114,13 @@ public class UserManagerTests {
                 .build();
         userManager.updateUser(updatedUser);
 
-        User fetchedUser = userManager.getUser(uid).orElseThrow(
-                () -> new Exception("An error occurred retrieving user"));
+        User fetchedUser = userManager.getUser(uid);
         Assert.assertEquals("Usernames don't match",
                 "gcastellanos",
                 fetchedUser.getUsername());
     }
 
-    @Test(expected = NoSuchElementException.class)
+    @Test(expected = Exception.class)
     public void updateUserNotFoundTest() {
         User updatedUser = User.builder()
                 .username("gcastellanos")

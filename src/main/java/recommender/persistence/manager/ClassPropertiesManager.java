@@ -14,81 +14,88 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import java.util.Collections;
 import java.util.NoSuchElementException;
-import java.util.Optional;
 import java.util.Set;
 
-public class ClassPropertiesManager {
-    private UserManager userManager;
+class ClassPropertiesManager {
 
     ClassPropertiesManager() {
-        userManager = new UserManager();
     }
 
-    Optional<Integer> addClassProperties(ClassProperties classProperties, Integer uid)
+    Integer addClassProperties(ClassProperties classProperties)
             throws NoSuchElementException {
         Transaction tx = null;
-        Integer pid = null;
-
+        Integer pid;
+        Integer uid = classProperties.getUser().getUid();
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
 
-            // Retrieve user
-            Optional<User> user = userManager.getUser(uid);
-            if (user.isPresent()) {
-                User userEntity = user.get();
-                // Create relation between both entities
-                classProperties.setUser(userEntity);
+            User userEntity = session.get(User.class, uid);
+            classProperties.setUser(userEntity);
+            Set<ClassProperties> classPropertiesSet =
+                    userEntity.getClassPropertiesSet();
+            classPropertiesSet.add(classProperties);
+            userEntity.setClassPropertiesSet(classPropertiesSet);
 
-                Set<ClassProperties> classPropertiesSet =
-                        userEntity.getClassPropertiesSet();
-
-                classPropertiesSet.add(classProperties);
-                userEntity.setClassPropertiesSet(classPropertiesSet);
-
-                pid = (Integer) session.save(classProperties);
-                session.update(user);
-            }
+            pid = (Integer) session.save(classProperties);
+            session.update(userEntity);
 
             tx.commit();
         } catch (HibernateException e) {
-            if (tx != null) tx.rollback();
             e.printStackTrace();
+            if (tx != null) tx.rollback();
+            throw e;
         }
-        return Optional.ofNullable(pid);
+        return pid;
     }
 
-    Set<ClassProperties> getClassPropertiesByUser(Integer uid) {
+    Set<ClassProperties> listClassPropertiesByUser(Integer uid) {
         Transaction tx = null;
         Set<ClassProperties> classPropertiesSet = Collections.emptySet();
-
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
-
-            Optional<User> user = userManager.getUser(uid);
-            if (user.isPresent()) {
-                classPropertiesSet = user.get().getClassPropertiesSet();
-            }
-
+            User user = session.get(User.class, uid);
+            classPropertiesSet = user.getClassPropertiesSet();
             tx.commit();
         } catch (HibernateException e) {
-            if (tx != null) tx.rollback();
             e.printStackTrace();
+            if (tx != null) tx.rollback();
         }
         return classPropertiesSet;
     }
 
-    Optional<ClassProperties> getClassPropertiesByUriAndUser(String uri, Integer uid) {
+    ClassProperties getClassProperties(Integer pid) {
         Transaction tx = null;
-        ClassProperties classProperties = null;
+        ClassProperties classProperties;
+        try (Session session = HibernateUtil.openSession()) {
+            tx = session.beginTransaction();
+            classProperties = session.get(ClassProperties.class, pid);
+            if (classProperties == null) {
+                throw new NoSuchElementException(
+                        String.format("Class props with id %s not found", pid)
+                );
+            }
+            tx.commit();
+        } catch (HibernateException e) {
+            e.printStackTrace();
+            if (tx != null) tx.rollback();
+            throw e;
+        }
+        return classProperties;
+    }
+
+    ClassProperties getClassProperties(String uri, Integer uid) {
+        Transaction tx = null;
+        ClassProperties classProperties;
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
 
+            User user = session.get(User.class, uid);
             CriteriaBuilder cb = session.getCriteriaBuilder();
             CriteriaQuery<ClassProperties> criteriaQuery = cb.createQuery(ClassProperties.class);
             Root<ClassProperties> root = criteriaQuery.from(ClassProperties.class);
             Predicate predicate = cb.and(
                     cb.like(root.get("uri"), uri),
-                    cb.equal(root.get("uid"), uid)
+                    cb.equal(root.get("user"), user)
             );
             criteriaQuery.select(root).where(predicate);
             Query<ClassProperties> query = session.createQuery(criteriaQuery);
@@ -102,10 +109,53 @@ public class ClassPropertiesManager {
             }
             tx.commit();
         } catch (HibernateException e) {
-            if (tx != null) tx.rollback();
             e.printStackTrace();
+            if (tx != null) tx.rollback();
+            throw e;
         }
 
-        return Optional.ofNullable(classProperties);
+        return classProperties;
+    }
+
+    void updateClassProperties(ClassProperties updatedProperties) {
+        Transaction tx = null;
+        try (Session session = HibernateUtil.openSession()) {
+            tx = session.beginTransaction();
+            Integer pid = updatedProperties.getPid();
+            ClassProperties props = session.get(ClassProperties.class, pid);
+            if (props == null) {
+                throw new NoSuchElementException(
+                        String.format(
+                                "Class Properties with id %s not found",
+                                pid));
+            }
+            session.merge(updatedProperties);
+            tx.commit();
+        } catch (HibernateException e) {
+            e.printStackTrace();
+            if (tx != null) tx.rollback();
+        }
+    }
+
+    void deleteClassProperties(Integer pid) {
+        Transaction tx = null;
+        try (Session session = HibernateUtil.openSession()) {
+            tx = session.beginTransaction();
+            ClassProperties classProperties = session.get(ClassProperties.class, pid);
+            if (classProperties == null) {
+                throw new NoSuchElementException(
+                        String.format(
+                                "Class Properties with id %s not found",
+                                pid));
+            }
+            Integer uid = classProperties.getUser().getUid();
+            User user = session.get(User.class, uid);
+            user.getClassPropertiesSet().remove(classProperties);
+            session.delete(classProperties);
+            tx.commit();
+        } catch (HibernateException e) {
+            e.printStackTrace();
+            if (tx != null) tx.rollback();
+        }
     }
 }
