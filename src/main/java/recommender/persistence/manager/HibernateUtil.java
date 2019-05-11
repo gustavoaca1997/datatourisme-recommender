@@ -11,7 +11,6 @@ import java.util.Arrays;
 public final class HibernateUtil {
     private static SessionFactory factory;
 
-
     static {
         try {
             Configuration config = new Configuration()

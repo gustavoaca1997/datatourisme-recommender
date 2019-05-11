@@ -18,9 +18,6 @@
         <property name="hibernate.connection.password">
             datatourisme
         </property>
-        <property name="hibernate.show_sql">
-            true
-        </property>
 
     </session-factory>
 </hibernate-configuration>

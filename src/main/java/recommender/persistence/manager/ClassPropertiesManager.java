@@ -16,12 +16,12 @@ import java.util.Collections;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-class ClassPropertiesManager {
+public class ClassPropertiesManager {
 
-    ClassPropertiesManager() {
+    public ClassPropertiesManager() {
     }
 
-    Integer addClassProperties(ClassProperties classProperties)
+    public Integer addClassProperties(ClassProperties classProperties)
             throws NoSuchElementException {
         Transaction tx = null;
         Integer pid;
@@ -48,7 +48,7 @@ class ClassPropertiesManager {
         return pid;
     }
 
-    Set<ClassProperties> listClassPropertiesByUser(Integer uid) {
+    public Set<ClassProperties> listClassPropertiesByUser(Integer uid) {
         Transaction tx = null;
         Set<ClassProperties> classPropertiesSet = Collections.emptySet();
         try (Session session = HibernateUtil.openSession()) {
@@ -63,7 +63,7 @@ class ClassPropertiesManager {
         return classPropertiesSet;
     }
 
-    ClassProperties getClassProperties(Integer pid) {
+    public ClassProperties getClassProperties(Integer pid) {
         Transaction tx = null;
         ClassProperties classProperties;
         try (Session session = HibernateUtil.openSession()) {
@@ -83,7 +83,7 @@ class ClassPropertiesManager {
         return classProperties;
     }
 
-    ClassProperties getClassProperties(String uri, Integer uid) {
+    public ClassProperties getClassProperties(String uri, Integer uid) {
         Transaction tx = null;
         ClassProperties classProperties;
         try (Session session = HibernateUtil.openSession()) {
@@ -117,12 +117,19 @@ class ClassPropertiesManager {
         return classProperties;
     }
 
-    void updateClassProperties(ClassProperties updatedProperties) {
+    public void updateClassProperties(ClassProperties updatedProperties) {
         Transaction tx = null;
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
+            ClassProperties props;
             Integer pid = updatedProperties.getPid();
-            ClassProperties props = session.get(ClassProperties.class, pid);
+            if (pid != null) {
+                props = session.get(ClassProperties.class, pid);
+            } else {
+                Integer uid = updatedProperties.getUser().getUid();
+                String uri = updatedProperties.getUri();
+                props = getClassProperties(uri, uid);
+            }
             if (props == null) {
                 throw new NoSuchElementException(
                         String.format(

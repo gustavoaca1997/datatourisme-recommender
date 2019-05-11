@@ -8,4 +8,7 @@ CREATE TABLE IF NOT EXISTS class_properties (
     CONSTRAINT user_fk FOREIGN KEY (uid)
         REFERENCES user(uid)
         ON DELETE CASCADE
-)
+);
+
+ALTER TABLE class_properties
+ADD UNIQUE unique_idx (uri, uid);

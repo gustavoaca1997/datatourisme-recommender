@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
-class UserManager {
-    UserManager() {
+public class UserManager {
+    public UserManager() {
     }
 
     /**
@@ -20,7 +20,7 @@ class UserManager {
      * @param user an entity with the user's fields
      * @return New user's id
      */
-    Integer addUser(User user) {
+    public Integer addUser(User user) {
         Transaction tx = null;
         Integer userID = null;
 
@@ -41,7 +41,7 @@ class UserManager {
      * @return List of {@link User User}
      */
     @SuppressWarnings("unchecked")
-    List<User> listUsers() {
+    public List<User> listUsers() {
         Transaction tx = null;
         List<User> users = new ArrayList<>();
         try (Session session = HibernateUtil.openSession()) {
@@ -62,7 +62,7 @@ class UserManager {
      * @return A {@link Optional<User> User} corresponding to the user.
      * @throws NoSuchElementException if there is not such user.
      */
-    User getUser(Integer uid) {
+    public User getUser(Integer uid) {
         Transaction tx = null;
         User user;
         try (Session session = HibernateUtil.openSession()) {
@@ -88,7 +88,7 @@ class UserManager {
      * Delete user by id
      * @param uid id of user to be deleted
      */
-    void deleteUser(Integer uid) {
+    public void deleteUser(Integer uid) {
         Transaction tx = null;
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
