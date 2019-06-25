@@ -1,6 +1,6 @@
 package recommender.semantic.util.constants;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public final class OntologyConstants {
@@ -19,6 +19,5 @@ public final class OntologyConstants {
     public static final String MODEL_FILE = "datatourisme.ttl";
 
 
-    public static final List<String> HIGH_CLASSES_URI = Arrays.asList(ENTERTAINMENT_AND_EVENT_URI,
-            PLACE_URI, PRODUCT_URI, TOUR_URI);
+    public static final List<String> HIGH_CLASSES_URI = Collections.singletonList(PLACE_URI);
 }

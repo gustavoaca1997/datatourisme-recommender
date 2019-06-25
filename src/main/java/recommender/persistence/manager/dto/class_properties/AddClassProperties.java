@@ -9,11 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GetDTO {
-    private Integer pid;
+public class AddClassProperties {
     private String uri;
-    private Integer uid;
     private Double preference;
     private Double confidence;
-    private Double activation;
 }

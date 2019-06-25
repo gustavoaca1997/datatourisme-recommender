@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GetDTO {
+public class CreateUser {
     String username;
-    Integer uid;
 }

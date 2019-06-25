@@ -1,11 +1,19 @@
 package recommender.persistence.manager;
 
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import recommender.persistence.entity.ClassProperties;
 import recommender.persistence.entity.User;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ClassPropertiesTest {
@@ -42,7 +50,6 @@ public class ClassPropertiesTest {
         ClassProperties props = ClassProperties.builder()
                 .user(user)
                 .uri("uri.com")
-                .activation(0.)
                 .confidence(0.)
                 .preference(0.)
                 .build();
@@ -57,7 +64,6 @@ public class ClassPropertiesTest {
         ClassProperties props = ClassProperties.builder()
                 .user(user)
                 .uri("uri.com")
-                .activation(0.)
                 .confidence(0.)
                 .preference(0.)
                 .build();
@@ -66,8 +72,6 @@ public class ClassPropertiesTest {
         Assert.assertEquals("Users are not equal",
                 props.getUser().getUsername(), fetchedProps.getUser().getUsername());
         Assert.assertEquals("URIs don't match", props.getUri(), fetchedProps.getUri());
-        Assert.assertEquals("Activation don't match",
-                props.getActivation(), fetchedProps.getActivation());
         Assert.assertEquals("Preference don't match",
                 props.getPreference(), fetchedProps.getPreference());
         Assert.assertEquals("Confidence don't match",
@@ -81,7 +85,6 @@ public class ClassPropertiesTest {
         ClassProperties props = ClassProperties.builder()
                 .user(user)
                 .uri("uri.com")
-                .activation(0.)
                 .confidence(0.)
                 .preference(0.)
                 .build();
@@ -91,8 +94,6 @@ public class ClassPropertiesTest {
         Assert.assertEquals("Users are not equal",
                 props.getUser().getUsername(), fetchedProps.getUser().getUsername());
         Assert.assertEquals("URIs don't match", props.getUri(), fetchedProps.getUri());
-        Assert.assertEquals("Activation don't match",
-                props.getActivation(), fetchedProps.getActivation());
         Assert.assertEquals("Preference don't match",
                 props.getPreference(), fetchedProps.getPreference());
         Assert.assertEquals("Confidence don't match",
@@ -107,21 +108,18 @@ public class ClassPropertiesTest {
                 ClassProperties.builder()
                         .user(user)
                         .uri("uri.gov")
-                        .activation(0.)
                         .confidence(0.)
                         .preference(0.)
                         .build(),
                 ClassProperties.builder()
                         .user(user)
                         .uri("uri.com")
-                        .activation(0.)
                         .confidence(0.)
                         .preference(0.)
                         .build(),
                 ClassProperties.builder()
                         .user(user)
                         .uri("uri.org")
-                        .activation(0.)
                         .confidence(0.)
                         .preference(0.)
                         .build()
@@ -145,7 +143,6 @@ public class ClassPropertiesTest {
         ClassProperties props = ClassProperties.builder()
                 .user(user)
                 .uri("uri.com")
-                .activation(0.)
                 .confidence(0.)
                 .preference(0.)
                 .build();
@@ -158,8 +155,6 @@ public class ClassPropertiesTest {
         Assert.assertEquals("Users are not equal",
                 props.getUser().getUsername(), fetchedProps.getUser().getUsername());
         Assert.assertEquals("URIs don't match", props.getUri(), fetchedProps.getUri());
-        Assert.assertEquals("Activation don't match",
-                props.getActivation(), fetchedProps.getActivation());
         Assert.assertEquals("Preference don't match",
                 props.getPreference(), fetchedProps.getPreference());
         Assert.assertEquals("Confidence don't match",
@@ -173,7 +168,6 @@ public class ClassPropertiesTest {
         ClassProperties props = ClassProperties.builder()
                 .user(user)
                 .uri("uri.com")
-                .activation(0.)
                 .confidence(0.)
                 .preference(0.)
                 .build();
@@ -195,7 +189,6 @@ public class ClassPropertiesTest {
         ClassProperties props = ClassProperties.builder()
                 .user(user)
                 .uri("uri.com")
-                .activation(0.)
                 .confidence(0.)
                 .preference(0.)
                 .build();
@@ -225,7 +218,6 @@ public class ClassPropertiesTest {
                 .user(user)
                 .preference(0.)
                 .confidence(0.)
-                .activation(0.)
                 .build();
         classPropertiesManager.updateClassProperties(props);
     }

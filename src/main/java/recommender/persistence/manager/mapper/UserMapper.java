@@ -1,25 +1,25 @@
 package recommender.persistence.manager.mapper;
 
 import recommender.persistence.entity.User;
-import recommender.persistence.manager.dto.user.CreateDTO;
-import recommender.persistence.manager.dto.user.GetDTO;
-import recommender.persistence.manager.dto.user.UpdateDTO;
+import recommender.persistence.manager.dto.user.CreateUser;
+import recommender.persistence.manager.dto.user.GetUser;
+import recommender.persistence.manager.dto.user.UpdateUser;
 
 public final class UserMapper {
-    public static GetDTO toDTO(User user) {
-        return GetDTO.builder()
+    public static GetUser toDTO(User user) {
+        return GetUser.builder()
                 .username(user.getUsername())
                 .uid(user.getUid())
                 .build();
     }
 
-    public static User fromDTO(CreateDTO createDTO) {
+    public static User fromDTO(CreateUser createUser) {
         return User.builder()
-                .username(createDTO.getUsername())
+                .username(createUser.getUsername())
                 .build();
     }
 
-    public static void fromDTO(User user, UpdateDTO createDTO) {
+    public static void fromDTO(User user, UpdateUser createDTO) {
         user.setUsername(createDTO.getUsername());
     }
 }

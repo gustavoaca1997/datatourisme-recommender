@@ -116,7 +116,7 @@ public class SemanticNetwork implements Iterable {
         return sumOfConfidences / numberOfAncestors - decreaseRate;
     }
 
-    public Double initicalPreference(List<ClassProperties> ancestors) {
+    public Double initialPreference(List<ClassProperties> ancestors) {
         Double weightedSumOfPreferences = ancestors.stream()
                 .map(a -> a.getConfidence() * a.getPreference())
                 .reduce((a1, a2) -> a1 + a2).orElse(0D);
@@ -147,4 +147,5 @@ public class SemanticNetwork implements Iterable {
     public Double updatedConfidence(Double oldConfidence, Double assignedConfidence) {
         return (1 - coopScale) * oldConfidence + coopScale * assignedConfidence;
     }
+
 }

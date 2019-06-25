@@ -1,27 +1,25 @@
 package recommender.persistence.manager.mapper;
 
 import recommender.persistence.entity.ClassProperties;
-import recommender.persistence.manager.dto.class_properties.CreateDTO;
-import recommender.persistence.manager.dto.class_properties.GetDTO;
+import recommender.persistence.manager.dto.class_properties.AddClassProperties;
+import recommender.persistence.manager.dto.class_properties.GetClassProperties;
 
 public final class ClassPropertiesMapper {
-    public static ClassProperties fromDTO(CreateDTO createDTO) {
+    public static ClassProperties fromDTO(AddClassProperties addClassProperties) {
         return ClassProperties.builder()
-                .uri(createDTO.getUri())
-                .preference(createDTO.getPreference())
-                .confidence(createDTO.getConfidence())
-                .activation(createDTO.getActivation())
+                .uri(addClassProperties.getUri())
+                .preference(addClassProperties.getPreference())
+                .confidence(addClassProperties.getConfidence())
                 .build();
     }
 
-    public static GetDTO toDTO(ClassProperties classProperties) {
-        return GetDTO.builder()
+    public static GetClassProperties toDTO(ClassProperties classProperties) {
+        return GetClassProperties.builder()
                 .pid(classProperties.getPid())
                 .uri(classProperties.getUri())
                 .uid(classProperties.getUser().getUid())
                 .preference(classProperties.getPreference())
                 .confidence(classProperties.getConfidence())
-                .activation(classProperties.getActivation())
                 .build();
     }
 }

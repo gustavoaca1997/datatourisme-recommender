@@ -56,10 +56,12 @@ public class RecommenderSession {
                                         .user(getUser())
                                         .confidence(1D)
                                         .preference(pref)
-                                        .activation(0D)
                                         .build()));
         initialSpreading();
     }
+
+    //  TODO
+    //      update from an ont class
 
     @Transactional(rollbackOn = Exception.class)
     private void initialSpreading() {
@@ -84,16 +86,23 @@ public class RecommenderSession {
                         .collect(Collectors.toList());
 
                 Double confidence = semanticNetwork.initialConfidence(ancestors);
-                Double preference = semanticNetwork.initicalPreference(ancestors);
+                Double preference = semanticNetwork.initialPreference(ancestors);
 
                 propertiesManager.addClassProperties(ClassProperties.builder()
                         .uri(ontClass.getURI())
                         .user(getUser())
                         .confidence(confidence)
                         .preference(preference)
-                        .activation(0D)
                         .build());
             }
         }
     }
+
+
+    //  TODO get recommendations for ont classes
+    //      - Parameters: Context factor level of fulfillment.
+    //      - From each context factor, spread fulfillment and
+    //          store in a collection each ont class/uri with its
+    //          uri, activation and preference.
+    //      - Return collection ordered by preference * activation
 }

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(builderMethodName = "updateBuilder")
-public class UpdateDTO {
+public class UpdateUser {
     String username;
     Integer uid;
 }
