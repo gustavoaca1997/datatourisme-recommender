@@ -131,16 +131,15 @@ public class ClassPropertiesManager {
                 props = getClassProperties(uri, uid);
             }
             if (props == null) {
-                throw new NoSuchElementException(
-                        String.format(
-                                "Class Properties with id %s not found",
-                                pid));
+                throw new NoSuchElementException("Class props not found");
             }
+            updatedProperties.setPid(props.getPid());
             session.merge(updatedProperties);
             tx.commit();
         } catch (HibernateException e) {
             e.printStackTrace();
             if (tx != null) tx.rollback();
+            throw e;
         }
     }
 
@@ -159,10 +158,12 @@ public class ClassPropertiesManager {
             User user = session.get(User.class, uid);
             user.getClassPropertiesSet().remove(classProperties);
             session.delete(classProperties);
+
             tx.commit();
         } catch (HibernateException e) {
             e.printStackTrace();
             if (tx != null) tx.rollback();
+            throw e;
         }
     }
 }

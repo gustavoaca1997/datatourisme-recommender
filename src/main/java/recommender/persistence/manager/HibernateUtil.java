@@ -4,6 +4,8 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import recommender.persistence.entity.ClassProperties;
+import recommender.persistence.entity.ContextFactor;
+import recommender.persistence.entity.Relevance;
 import recommender.persistence.entity.User;
 
 import java.util.Arrays;
@@ -16,7 +18,9 @@ public final class HibernateUtil {
             Configuration config = new Configuration()
                     .configure()
                     .addAnnotatedClass(User.class)
-                    .addAnnotatedClass(ClassProperties.class);
+                    .addAnnotatedClass(ClassProperties.class)
+                    .addAnnotatedClass(ContextFactor.class)
+                    .addAnnotatedClass(Relevance.class);
             factory = config.buildSessionFactory();
         } catch (Throwable ex) {
             System.err.println("Failed to create sessionFactory object." + ex);

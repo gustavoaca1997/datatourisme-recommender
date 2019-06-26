@@ -5,7 +5,6 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import recommender.persistence.entity.User;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -22,7 +21,7 @@ public class UserManager {
      */
     public Integer addUser(User user) {
         Transaction tx = null;
-        Integer userID = null;
+        Integer userID;
 
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
@@ -31,6 +30,7 @@ public class UserManager {
         } catch (HibernateException e) {
             e.printStackTrace();
             if (tx != null) tx.rollback();
+            throw e;
         }
         return userID;
     }
@@ -43,7 +43,7 @@ public class UserManager {
     @SuppressWarnings("unchecked")
     public List<User> listUsers() {
         Transaction tx = null;
-        List<User> users = new ArrayList<>();
+        List<User> users;
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
             users = session.createQuery("FROM User").list();
@@ -51,6 +51,7 @@ public class UserManager {
         } catch (HibernateException e) {
             e.printStackTrace();
             if (tx != null) tx.rollback();
+            throw e;
         }
         return users;
     }
@@ -99,6 +100,7 @@ public class UserManager {
         } catch (HibernateException e) {
             e.printStackTrace();
             if (tx != null) tx.rollback();
+            throw e;
         }
     }
 
@@ -125,6 +127,7 @@ public class UserManager {
         } catch (HibernateException e) {
             e.printStackTrace();
             if (tx != null) tx.rollback();
+            throw e;
         }
     }
 }

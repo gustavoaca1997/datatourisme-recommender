@@ -24,12 +24,11 @@ import java.util.Set;
 public class ContextFactor {
     @Id
     @Column(name = "ciud")
-    private Long cid;
+    private Integer cid;
 
-    @Id
     @Column(name = "name")
     private String name;
 
-    @OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "contextFactor")
     private Set<Relevance> relevanceSet;
 }

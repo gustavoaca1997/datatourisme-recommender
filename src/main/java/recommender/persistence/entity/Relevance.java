@@ -24,10 +24,10 @@ public class Relevance {
 
     @Id
     @Column(name = "rid")
-    private Long rid;
+    private Integer rid;
 
     @ManyToOne
-    @JoinColumn(name = "cid")
+    @JoinColumn(name = "cid", nullable = false)
     private ContextFactor contextFactor;
 
     @Column(name = "uri")

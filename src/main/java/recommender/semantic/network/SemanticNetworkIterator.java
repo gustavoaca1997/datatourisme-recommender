@@ -3,7 +3,11 @@ package recommender.semantic.network;
 import org.apache.jena.ontology.OntClass;
 import recommender.semantic.util.constants.OntologyConstants;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 
@@ -16,7 +20,7 @@ public class SemanticNetworkIterator implements Iterator<OntClass> {
         visitedSet = new HashSet<>();
         OntClass pointOfInterestClass = semanticNetwork
                 .getOntModel()
-                .getOntClass(OntologyConstants.POINT_OF_INTEREST_URI);
+                .getOntClass(OntologyConstants.PLACE_URI);
         assert(pointOfInterestClass != null);
         queue.add(pointOfInterestClass);
         visitedSet.add(pointOfInterestClass);

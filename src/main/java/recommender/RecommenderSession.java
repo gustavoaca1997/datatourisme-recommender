@@ -11,7 +11,6 @@ import recommender.persistence.manager.UserManager;
 import recommender.semantic.network.SemanticNetwork;
 import recommender.semantic.util.constants.OntologyConstants;
 
-import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,7 +45,6 @@ public class RecommenderSession {
         semanticNetwork.setCoopScale(beta);
     }
 
-    @Transactional(rollbackOn = Exception.class)
     public void init(Map<String, Double> initialPreferences) {
         initialPreferences.forEach(
                 (uri, pref) ->
@@ -63,7 +61,6 @@ public class RecommenderSession {
     //  TODO
     //      update from an ont class
 
-    @Transactional(rollbackOn = Exception.class)
     private void initialSpreading() {
         @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
         for (OntClass ontClass : iterable) {

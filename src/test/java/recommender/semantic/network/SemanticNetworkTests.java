@@ -2,17 +2,13 @@ package recommender.semantic.network;
 
 
 import org.apache.jena.ontology.OntClass;
-import org.apache.jena.rdf.model.Resource;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.stream.Collectors;
 
-import static recommender.semantic.util.constants.OntologyConstants.HIGH_CLASSES_URI;
-import static recommender.semantic.util.constants.OntologyConstants.POINT_OF_INTEREST_URI;
+import static recommender.semantic.util.constants.OntologyConstants.PLACE_URI;
 
 public class SemanticNetworkTests {
     static private SemanticNetwork semanticNetwork;
@@ -41,19 +37,6 @@ public class SemanticNetworkTests {
     public void rootClassIsPOITest() {
         Iterator<OntClass> iterator = semanticNetwork.iterator();
         OntClass root = iterator.next();
-        Assert.assertEquals("Ontology Classes don't match", POINT_OF_INTEREST_URI, root.getURI());
-    }
-
-    @Test
-    public void rootClassSubClassesTest() {
-        Iterator<OntClass> iterator = semanticNetwork.iterator();
-        OntClass root = iterator.next();
-        Assert.assertEquals("High classes don't match",
-                new HashSet<>(HIGH_CLASSES_URI),
-                root.listSubClasses(true)
-                        .toSet()
-                        .stream()
-                        .map(Resource::getURI)
-                        .collect(Collectors.toSet()));
+        Assert.assertEquals("Ontology Classes don't match", PLACE_URI, root.getURI());
     }
 }
