@@ -36,4 +36,6 @@ public class Relevance {
     @Column(name = "value")
     private Double value;
 
+    //TODO: relation One-To-Many to User.
+
 }

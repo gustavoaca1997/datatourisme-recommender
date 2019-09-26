@@ -34,7 +34,6 @@ public class ClassPropertiesManager {
             Set<ClassProperties> classPropertiesSet =
                     userEntity.getClassPropertiesSet();
             classPropertiesSet.add(classProperties);
-            userEntity.setClassPropertiesSet(classPropertiesSet);
 
             pid = (Integer) session.save(classProperties);
             session.update(userEntity);
@@ -50,6 +49,7 @@ public class ClassPropertiesManager {
 
     public Set<ClassProperties> listClassPropertiesByUser(Integer uid) {
         Transaction tx = null;
+        //noinspection UnusedAssignment
         Set<ClassProperties> classPropertiesSet = Collections.emptySet();
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
@@ -59,6 +59,7 @@ public class ClassPropertiesManager {
         } catch (HibernateException e) {
             e.printStackTrace();
             if (tx != null) tx.rollback();
+            throw e;
         }
         return classPropertiesSet;
     }

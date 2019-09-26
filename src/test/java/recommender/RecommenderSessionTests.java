@@ -13,6 +13,7 @@ import recommender.semantic.util.constants.OntologyConstants;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 public class RecommenderSessionTests {
     private static RecommenderSession recommenderSession;
@@ -39,11 +40,15 @@ public class RecommenderSessionTests {
 
     @Test
     public void initRecommenderSessionTest() {
+        Random rand = new Random();
         Map<String, Double> initialPreferences = new HashMap<>();
-        initialPreferences.put(OntologyConstants.ENTERTAINMENT_AND_EVENT_URI, 0.75);
-        initialPreferences.put(OntologyConstants.PLACE_URI, 0.8);
-        initialPreferences.put(OntologyConstants.PRODUCT_URI, 0.25);
-        initialPreferences.put(OntologyConstants.TOUR_URI, 0.35);
+        recommenderSession
+            .getSemanticNetwork()
+            .getOntModel()
+            .getOntClass(OntologyConstants.PLACE_URI)
+            .listSubClasses(true)
+            .forEachRemaining(
+                    c -> initialPreferences.put(c.getURI(), rand.nextDouble()));
 
         recommenderSession.init(initialPreferences);
 
