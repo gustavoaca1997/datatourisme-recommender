@@ -8,6 +8,8 @@ import lombok.Setter;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
@@ -23,6 +25,7 @@ import javax.persistence.Table;
 public class Relevance {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "rid")
     private Integer rid;
 
@@ -36,6 +39,9 @@ public class Relevance {
     @Column(name = "value")
     private Double value;
 
-    //TODO: relation One-To-Many to User.
+    //TODO: relation Many-To-One to User.
+    @ManyToOne
+    @JoinColumn(name = "uid", nullable = false)
+    private User user;
 
 }

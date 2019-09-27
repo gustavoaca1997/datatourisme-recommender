@@ -6,6 +6,7 @@ import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 import recommender.persistence.entity.ContextFactor;
 import recommender.persistence.entity.Relevance;
+import recommender.persistence.entity.User;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
@@ -13,10 +14,9 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Set;
 
-public class ContextFactorManager {
-    public ContextFactorManager() {
+public class ContextManager {
+    public ContextManager() {
 
     }
 
@@ -48,13 +48,17 @@ public class ContextFactorManager {
             ContextFactor contextFactor = session.get(ContextFactor.class, cid);
             relevance.setContextFactor(contextFactor);
 
-            Set<Relevance> relevanceSet =
-                    contextFactor.getRelevanceSet();
-            relevanceSet.add(relevance);
-            contextFactor.setRelevanceSet(relevanceSet);
+            Integer uid = relevance.getUser().getUid();
+            User user = session.get(User.class, uid);
+            relevance.setUser(user);
+
+            contextFactor.getRelevanceSet().add(relevance);
+            user.getRelevanceSet().add(relevance);
 
             rid = (Integer) session.save(relevance);
             session.update(contextFactor);
+            session.update(user);
+
             tx.commit();
 
             return rid;
@@ -103,18 +107,21 @@ public class ContextFactorManager {
         }
     }
 
-    public Relevance getRelevance(String uri, Integer cid) {
+    public Relevance getRelevance(String uri, Integer cid, Integer uid) {
         Transaction tx = null;
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
 
             ContextFactor contextFactor = session.get(ContextFactor.class, cid);
+            User user = session.get(User.class, uid);
+
             CriteriaBuilder cb = session.getCriteriaBuilder();
             CriteriaQuery<Relevance> criteriaQuery = cb.createQuery(Relevance.class);
             Root<Relevance> root = criteriaQuery.from(Relevance.class);
             Predicate predicate = cb.and(
                     cb.like(root.get("uri"), uri),
-                    cb.equal(root.get("contextFactor"), contextFactor)
+                    cb.equal(root.get("contextFactor"), contextFactor),
+                    cb.equal(root.get("user"), user)
             );
             criteriaQuery.select(root).where(predicate);
             Query<Relevance> query = session.createQuery(criteriaQuery);
@@ -147,7 +154,8 @@ public class ContextFactorManager {
             } else {
                 String uri = updateRelevance.getUri();
                 Integer cid = updateRelevance.getContextFactor().getCid();
-                relevance = getRelevance(uri, cid);
+                Integer uid = updateRelevance.getUser().getUid();
+                relevance = getRelevance(uri, cid, uid);
             }
             if (relevance == null) {
                 throw new NoSuchElementException("Relevance not found");
@@ -161,17 +169,27 @@ public class ContextFactorManager {
         }
     }
 
+    public void deleteContextFactor(Integer cid) {
+        Transaction tx = null;
+        try (Session session = HibernateUtil.openSession()) {
+            tx = session.beginTransaction();
+
+            ContextFactor contextFactor = session.get(ContextFactor.class, cid);
+            session.delete(contextFactor);
+
+            tx.commit();
+        } catch (HibernateException e) {
+            if (tx != null) tx.rollback();
+            throw e;
+        }
+    }
+
     public void deleteRelevance(Integer rid) {
         Transaction tx = null;
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
 
-            Relevance relevance = session.get(Relevance.class, rid);
-            if (relevance == null) {
-                throw new NoSuchElementException(
-                        String.format("Relevance with id %s not found", rid)
-                );
-            }
+            Relevance relevance = getRelevance(rid);
             Integer cid = relevance.getContextFactor().getCid();
             ContextFactor contextFactor = session.get(ContextFactor.class, cid);
             contextFactor.getRelevanceSet().remove(relevance);
@@ -188,6 +206,7 @@ public class ContextFactorManager {
         Transaction tx = null;
         try (Session session = HibernateUtil.openSession()) {
             tx = session.beginTransaction();
+            //noinspection unchecked
             List<ContextFactor> contextFactors =
                     session.createQuery("FROM ContextFactor").list();
             tx.commit();
@@ -195,6 +214,23 @@ public class ContextFactorManager {
         } catch (HibernateException e) {
             if (tx != null) tx.rollback();
             throw e;
+        }
+    }
+
+    public List<Relevance> listRelevancesByUserId(Integer uid) {
+        try (Session session = HibernateUtil.openSession()) {
+            User user = session.get(User.class, uid);
+
+            CriteriaBuilder cb = session.getCriteriaBuilder();
+            CriteriaQuery<Relevance> criteriaQuery = cb.createQuery(Relevance.class);
+            Root<Relevance> root = criteriaQuery.from(Relevance.class);
+            Predicate predicate = cb.and(
+                    cb.equal(root.get("user"), user)
+            );
+            criteriaQuery.select(root).where(predicate);
+            Query<Relevance> query = session.createQuery(criteriaQuery);
+
+            return query.getResultList();
         }
     }
 }

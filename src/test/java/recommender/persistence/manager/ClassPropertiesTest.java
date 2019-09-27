@@ -176,6 +176,7 @@ public class ClassPropertiesTest {
         ClassProperties fetchedProps = null;
         try {
             fetchedProps = classPropertiesManager.getClassProperties(props.getPid());
+            Assert.fail();
         } catch (NoSuchElementException e) {
             Assert.assertNull("Fetched props is not null", fetchedProps);
             throw e;
