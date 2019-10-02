@@ -28,7 +28,7 @@ public class UserManager {
             userID = (Integer) session.save(user);
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -49,7 +49,7 @@ public class UserManager {
             users = session.createQuery("FROM User").list();
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -78,7 +78,7 @@ public class UserManager {
             }
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -98,7 +98,7 @@ public class UserManager {
             session.delete(user);
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -125,7 +125,7 @@ public class UserManager {
             session.merge(updatedUser);
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }

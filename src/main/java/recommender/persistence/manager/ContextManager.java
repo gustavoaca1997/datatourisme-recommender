@@ -31,7 +31,7 @@ public class ContextManager {
 
             return cid;
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -63,7 +63,7 @@ public class ContextManager {
 
             return rid;
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -190,10 +190,8 @@ public class ContextManager {
             tx = session.beginTransaction();
 
             Relevance relevance = getRelevance(rid);
-            Integer cid = relevance.getContextFactor().getCid();
-            ContextFactor contextFactor = session.get(ContextFactor.class, cid);
-            contextFactor.getRelevanceSet().remove(relevance);
-            session.delete(relevance);
+            relevance.getContextFactor().getRelevanceSet().remove(relevance);
+            session.remove(relevance);
 
             tx.commit();
         } catch (HibernateException e) {
@@ -218,19 +216,20 @@ public class ContextManager {
     }
 
     public List<Relevance> listRelevancesByUserId(Integer uid) {
-        try (Session session = HibernateUtil.openSession()) {
-            User user = session.get(User.class, uid);
+        Session session = HibernateUtil.openSession();
+        Query<Relevance> query;
+        User user = session.get(User.class, uid);
 
-            CriteriaBuilder cb = session.getCriteriaBuilder();
-            CriteriaQuery<Relevance> criteriaQuery = cb.createQuery(Relevance.class);
-            Root<Relevance> root = criteriaQuery.from(Relevance.class);
-            Predicate predicate = cb.and(
-                    cb.equal(root.get("user"), user)
-            );
-            criteriaQuery.select(root).where(predicate);
-            Query<Relevance> query = session.createQuery(criteriaQuery);
-
-            return query.getResultList();
-        }
+        CriteriaBuilder cb = session.getCriteriaBuilder();
+        CriteriaQuery<Relevance> criteriaQuery = cb.createQuery(Relevance.class);
+        Root<Relevance> root = criteriaQuery.from(Relevance.class);
+        Predicate predicate = cb.and(
+                cb.equal(root.get("user"), user)
+        );
+        criteriaQuery.select(root).where(predicate);
+        query = session.createQuery(criteriaQuery);
+        List<Relevance> result = query.getResultList();
+        session.close();
+        return result;
     }
 }

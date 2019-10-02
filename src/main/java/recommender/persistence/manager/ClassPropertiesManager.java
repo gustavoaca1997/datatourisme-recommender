@@ -40,7 +40,7 @@ public class ClassPropertiesManager {
 
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -57,7 +57,7 @@ public class ClassPropertiesManager {
             classPropertiesSet = user.getClassPropertiesSet();
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -77,7 +77,7 @@ public class ClassPropertiesManager {
             }
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -110,7 +110,7 @@ public class ClassPropertiesManager {
             }
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -138,7 +138,7 @@ public class ClassPropertiesManager {
             session.merge(updatedProperties);
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }
@@ -162,7 +162,7 @@ public class ClassPropertiesManager {
 
             tx.commit();
         } catch (HibernateException e) {
-            e.printStackTrace();
+
             if (tx != null) tx.rollback();
             throw e;
         }

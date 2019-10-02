@@ -9,10 +9,8 @@ import recommender.persistence.entity.ContextFactor;
 import recommender.persistence.entity.Relevance;
 import recommender.persistence.entity.User;
 
-import java.util.Arrays;
 import java.util.HashSet;
 
-// TODO
 public class ContextFactorTest {
     private static ContextManager contextManager;
     private static UserManager userManager;
@@ -27,28 +25,19 @@ public class ContextFactorTest {
                 .classPropertiesSet(new HashSet<>())
                 .build();
         admin.setUid(userManager.addUser(admin));
-
-        Arrays.asList("weather", "time", "day")
-                .forEach(cname -> contextManager.addContextFactor(
-                        ContextFactor.builder()
-                                .name(cname).build()));
     }
 
     @AfterClass
     public static void cleanUp() {
-        contextManager.listContextFactors()
-                .stream()
-                .map(ContextFactor::getCid)
-                .forEach(cid -> contextManager.deleteContextFactor(cid));
         userManager.deleteUser(admin.getUid());
     }
 
     @After
     public void cleanRelevances() {
-        contextManager.listRelevancesByUserId(admin.getUid())
+        contextManager.listContextFactors()
                 .stream()
-                .map(Relevance::getRid)
-                .forEach(rid -> contextManager.deleteRelevance(rid));
+                .map(ContextFactor::getCid)
+                .forEach(cid -> contextManager.deleteContextFactor(cid));
     }
 
     @Test
@@ -73,4 +62,64 @@ public class ContextFactorTest {
         Assert.fail();
     }
 
+    @Test
+    public void addRelevance() {
+        String uri = "www.com";
+        ContextFactor contextFactor = ContextFactor.builder()
+                .name("weather")
+                .build();
+        contextFactor.setCid(contextManager.addContextFactor(contextFactor));
+        Relevance relevance = Relevance.builder()
+                .contextFactor(contextFactor)
+                .uri(uri)
+                .user(admin)
+                .value(12.5D)
+                .build();
+        Integer rid = contextManager.addRelevance(relevance);
+        Assert.assertNotNull("Id is null", rid);
+    }
+
+    @Test
+    public void deleteRelevance() {
+        String uri = "www.com";
+        ContextFactor contextFactor = ContextFactor.builder()
+                .name("weather")
+                .build();
+        contextFactor.setCid(contextManager.addContextFactor(contextFactor));
+        Relevance relevance = Relevance.builder()
+                .contextFactor(contextFactor)
+                .uri(uri)
+                .user(admin)
+                .value(12.5D)
+                .build();
+        Integer rid = contextManager.addRelevance(relevance);
+        Assert.assertNotNull("Id is null", rid);
+
+        contextManager.deleteRelevance(rid);
+        ContextFactor getCF = contextManager.getContextFactor(contextFactor.getCid());
+        Assert.assertTrue("Set not empty", getCF.getRelevanceSet().isEmpty());
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void addDuplicateRelevance() {
+        String uri = "www.com";
+        ContextFactor contextFactor = ContextFactor.builder()
+                .name("weather")
+                .build();
+        contextFactor.setCid(contextManager.addContextFactor(contextFactor));
+        Relevance relevance = Relevance.builder()
+                .contextFactor(contextFactor)
+                .uri(uri)
+                .user(admin)
+                .value(12.5D)
+                .build();
+        contextManager.addRelevance(relevance);
+        contextManager.addRelevance(Relevance.builder()
+                .contextFactor(contextFactor)
+                .uri(uri)
+                .user(admin)
+                .value(800.78D)
+                .build());
+        Assert.fail();
+    }
 }

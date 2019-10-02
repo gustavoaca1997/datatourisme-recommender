@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS relevance (
     uid INT NOT NULL,
     uri VARCHAR(255) NOT NULL,
     value DOUBLE NOT NULL CHECK (0 <= value AND value <= 2),
-    CONSTRAINT unique_cid_uri UNIQUE(cid, uri),
+    CONSTRAINT unique_cid_uri UNIQUE(cid, uri, uid),
     CONSTRAINT rel_factor_fk FOREIGN KEY(cid)
         REFERENCES context_factor(cid)
         ON DELETE CASCADE,

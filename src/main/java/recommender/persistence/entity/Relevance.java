@@ -39,7 +39,6 @@ public class Relevance {
     @Column(name = "value")
     private Double value;
 
-    //TODO: relation Many-To-One to User.
     @ManyToOne
     @JoinColumn(name = "uid", nullable = false)
     private User user;
