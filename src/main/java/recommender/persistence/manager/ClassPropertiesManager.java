@@ -134,8 +134,9 @@ public class ClassPropertiesManager {
             if (props == null) {
                 throw new NoSuchElementException("Class props not found");
             }
-            updatedProperties.setPid(props.getPid());
-            session.merge(updatedProperties);
+            props.setPreference(updatedProperties.getPreference());
+            props.setConfidence(updatedProperties.getConfidence());
+            session.update(props);
             tx.commit();
         } catch (HibernateException e) {
 

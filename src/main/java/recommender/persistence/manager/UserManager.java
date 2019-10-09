@@ -3,8 +3,12 @@ package recommender.persistence.manager;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 import recommender.persistence.entity.User;
 
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -81,6 +85,36 @@ public class UserManager {
 
             if (tx != null) tx.rollback();
             throw e;
+        }
+        return user;
+    }
+
+    /**
+     * Get user by username.
+     *
+     * @param username username of the user.
+     * @return User entity
+     * @throws NoSuchElementException if there is not such user.
+     */
+    public User getUser(String username) {
+        User user;
+        try (Session session = HibernateUtil.openSession()) {
+
+            CriteriaBuilder cb = session.getCriteriaBuilder();
+            CriteriaQuery<User> criteriaQuery = cb.createQuery(User.class);
+            Root<User> root = criteriaQuery.from(User.class);
+            criteriaQuery.select(root).where(cb.like(root.get("username"), username));
+            Query<User> query = session.createQuery(criteriaQuery);
+
+            user = query.getSingleResult();
+
+            if (user == null) {
+                throw new
+                        NoSuchElementException(String.format(
+                        "User with username %s not found",
+                        username
+                ));
+            }
         }
         return user;
     }

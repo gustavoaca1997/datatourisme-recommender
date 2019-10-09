@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import org.apache.jena.ontology.OntClass;
+import org.apache.jena.util.iterator.ExtendedIterator;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 import recommender.persistence.entity.ClassProperties;
 import recommender.persistence.entity.ContextFactor;
 import recommender.persistence.entity.User;
@@ -12,9 +15,13 @@ import recommender.persistence.manager.UserManager;
 import recommender.semantic.network.SemanticNetwork;
 import recommender.semantic.util.constants.OntologyConstants;
 
+import javax.persistence.NoResultException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -69,52 +76,16 @@ public class RecommenderSession {
                                         .confidence(1D)
                                         .preference(pref)
                                         .build()));
-        initialSpreading();
-    }
-
-    //  TODO
-    //      update from an ont class to ancestors and to descendants.
-
-    private void initialSpreading() {
-        @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
-        for (OntClass ontClass : iterable) {
-            String namespace = ontClass.getNameSpace();
-
-            // If it is not POI class and neither a high class
-            if (!higherClasses.contains(ontClass.getURI()) &&
-                    !OntologyConstants.PLACE_URI.equals(ontClass.getURI())
-            ) {
-                List<ClassProperties> ancestors = ontClass.listSuperClasses(true)
-                        .toList().stream()
-                        .filter(ontClass1 ->
-                                Optional.ofNullable(ontClass1.getNameSpace())
-                                        .orElse("")
-                                        .equals(namespace))
-                        .map(OntClass::getURI)
-                        .map(uri -> propertiesManager
-                                .getClassProperties(uri, getUser().getUid()))
-                        .collect(Collectors.toList());
-
-                Double confidence = initialConfidence(ancestors);
-                Double preference = initialPreference(ancestors);
-
-                propertiesManager.addClassProperties(ClassProperties.builder()
-                        .uri(ontClass.getURI())
-                        .user(getUser())
-                        .confidence(confidence)
-                        .preference(preference)
-                        .build());
-            }
-        }
+        downwardsPropagation();
     }
 
     /**
      * Computes new confidence of a child node relative to its ancestors.
      *
      * @param ancestors list of ancestors of the node
-     * @return (Sum of ancestors ' confidences) / (Number of ancestors) - alpha
+     * @return (Sum of ancestors' confidences) / (Number of ancestors) - alpha
      */
-    public Double initialConfidence(List<ClassProperties> ancestors) {
+    public Double aggregatedConfidence(List<ClassProperties> ancestors) {
         Double sumOfConfidences = ancestors.stream()
                 .map(ClassProperties::getConfidence)
                 .reduce((c1, c2) -> c1 + c2).orElse(0D);
@@ -122,7 +93,13 @@ public class RecommenderSession {
         return sumOfConfidences / numberOfAncestors - decreaseRate;
     }
 
-    public Double initialPreference(List<ClassProperties> ancestors) {
+    /**
+     * Computes new preference of a child node relative to its ancestors.
+     *
+     * @param ancestors list of ancestors of the node
+     * @return (Weighted sum of preferences with confidence)/(sum of confidences)
+     */
+    public Double aggregatedPreference(List<ClassProperties> ancestors) {
         Double weightedSumOfPreferences = ancestors.stream()
                 .map(a -> a.getConfidence() * a.getPreference())
                 .reduce((a1, a2) -> a1 + a2).orElse(0D);
@@ -147,11 +124,138 @@ public class RecommenderSession {
      * Computes new confidence of a node relative to an assigned new confidence.
      *
      * @param oldConfidence      current value of the confidence
-     * @param assignedConfidence assigned value
+     * @param newConfidence     new or aggregated value of the condifende
      * @return new confidence
      */
-    public Double updatedConfidence(Double oldConfidence, Double assignedConfidence) {
-        return (1 - coopScale) * oldConfidence + coopScale * assignedConfidence;
+    public Double updatedConfidence(Double oldConfidence, Double newConfidence) {
+        return (1 - coopScale) * oldConfidence + coopScale*newConfidence;
+    }
+
+    //  TODO: test
+
+    /**
+     * From user feedback, update properties in the semantic network.
+     * @param uri                URI of the origin node
+     * @param newPreference     new preference set to the node
+     */
+    public void updateAndPropagate(String uri, Double newPreference) {
+        // Update preference and confidence
+        OntClass ontClass = semanticNetwork.getOntModel().getOntClass(uri);
+        ClassProperties properties = propertiesManager.getClassProperties(ontClass.getURI(), uid);
+        properties.setPreference(updatedPreference(properties.getPreference(), newPreference));
+        properties.setConfidence(updatedConfidence(properties.getConfidence(), 1D));
+        propertiesManager.updateClassProperties(properties);
+
+        upwardsPropagation(ontClass, new HashSet<>());
+        downwardsPropagation();
+    }
+
+
+    private void downwardsPropagation() {
+        @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
+        for (OntClass ontClass : iterable) {
+            propagate(ontClass, ontClass.listSuperClasses(true));
+        }
+    }
+
+
+    public void upwardsPropagation(OntClass ontClass, Set<OntClass> visitedSet) {
+        for (OntClass superClass : ontClass.listSuperClasses(true).toList()) {
+            String namespace = ontClass.getNameSpace();
+            if (namespace.equals(superClass.getNameSpace()) &&
+                    !superClass.getURI().equals(OntologyConstants.PLACE_URI) &&
+                    !visitedSet.contains(superClass)
+            ) {
+                visitedSet.add(superClass);
+                propagate(superClass, superClass.listSubClasses(true));
+                upwardsPropagation(superClass, visitedSet);
+            }
+        }
+    }
+
+    public void propagate(OntClass ontClass, ExtendedIterator<OntClass> ancestorClasses) {
+        String namespace = ontClass.getNameSpace();
+        if (!higherClasses.contains(ontClass.getURI()) &&
+                !OntologyConstants.PLACE_URI.equals(ontClass.getURI())
+        ) {
+            List<ClassProperties> ancestors = ancestorClasses
+                    .toList()
+                    .stream()
+                    .filter(ontClass1 -> namespace.equals(ontClass1.getNameSpace()))
+                    .map(OntClass::getURI)
+                    .map(uri -> propertiesManager
+                            .getClassProperties(uri, getUser().getUid()))
+                    .collect(Collectors.toList());
+
+            Double confidence = aggregatedConfidence(ancestors);
+            Double preference = aggregatedPreference(ancestors);
+
+            try {
+                ClassProperties existentProperties =
+                        propertiesManager.getClassProperties(ontClass.getURI(), uid);
+
+                existentProperties
+                        .setConfidence(updatedConfidence(
+                                existentProperties.getConfidence(),
+                                confidence));
+                existentProperties
+                        .setPreference(updatedPreference(
+                                existentProperties.getPreference(),
+                                preference));
+
+                propertiesManager.updateClassProperties(existentProperties);
+
+            } catch (NoSuchElementException | NoResultException e) {
+                propertiesManager.addClassProperties(ClassProperties.builder()
+                        .uri(ontClass.getURI())
+                        .user(getUser())
+                        .confidence(confidence)
+                        .preference(preference)
+                        .build());
+            }
+        }
+    }
+
+    /**
+     * Write to a file state of the semantic network as a JSON.
+     * @throws IOException
+     */
+    public void exportJSON(String filename) throws IOException {
+        JSONObject json = toJSONObject(
+                semanticNetwork.getOntModel().getOntClass(OntologyConstants.PLACE_URI),
+                new HashSet<>());
+
+        try (FileWriter file = new FileWriter(filename)) {
+            file.write(json.toJSONString());
+            System.out.println("Successfully Copied JSON Object to File...");
+        }
+    }
+
+    private JSONObject toJSONObject(OntClass ontClass, Set<OntClass> visitedSet) {
+        JSONObject obj = new JSONObject();
+        obj.put("name", ontClass.getURI().split("#")[1]);
+
+        JSONArray children = new JSONArray();
+        for (OntClass subClass : ontClass.listSubClasses(true).toList()) {
+            String namespace = ontClass.getNameSpace();
+            if (subClass.getNameSpace().equals(namespace) &&
+                    !visitedSet.contains(subClass)
+            ) {
+                visitedSet.add(subClass);
+                JSONObject child = toJSONObject(subClass, visitedSet);
+                children.add(child);
+            }
+        }
+
+        obj.put("subclasses", children);
+
+        if (!ontClass.getURI().equals(OntologyConstants.PLACE_URI)) {
+            ClassProperties properties = propertiesManager.getClassProperties(ontClass.getURI(), uid);
+            obj.put("preference", properties.getPreference());
+            obj.put("confidence", properties.getConfidence());
+        }
+
+        return obj;
     }
 
     //  TODO get recommendations for ont classes
