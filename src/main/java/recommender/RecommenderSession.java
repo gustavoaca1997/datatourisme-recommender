@@ -9,8 +9,10 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import recommender.persistence.entity.ClassProperties;
 import recommender.persistence.entity.ContextFactor;
+import recommender.persistence.entity.Relevance;
 import recommender.persistence.entity.User;
 import recommender.persistence.manager.ClassPropertiesManager;
+import recommender.persistence.manager.ContextManager;
 import recommender.persistence.manager.UserManager;
 import recommender.semantic.network.SemanticNetwork;
 import recommender.semantic.util.constants.OntologyConstants;
@@ -18,6 +20,10 @@ import recommender.semantic.util.constants.OntologyConstants;
 import javax.persistence.NoResultException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,22 +39,28 @@ import static org.apache.commons.lang3.ObjectUtils.min;
 public class RecommenderSession {
     private final UserManager userManager;
     private final ClassPropertiesManager propertiesManager;
+    private final ContextManager contextManager;
     private final SemanticNetwork semanticNetwork;
-    private final Integer uid;                    // user id
+    private final Integer uid;                      // user id
 
-    private Double decreaseRate ;    // how much does confidence decrease in initial spreading
-    private Double coopScale = 0.1;       // cooperation scale between current values and new values
+    private Double decreaseRate ;                   // how much does confidence decrease in initial spreading
+    private Double coopScale = 0.1;                 // cooperation scale between current values and new values
 
     private final Set<String> higherClasses;
 
+    private final Map<OntClass, Double> activationMap;
+
     public RecommenderSession(UserManager userManager, ClassPropertiesManager classPropertiesManager,
+                              ContextManager contextManager,
                               SemanticNetwork semanticNetwork, Integer uid) {
         this.userManager = userManager;
         this.propertiesManager = classPropertiesManager;
+        this.contextManager = contextManager;
         this.semanticNetwork = semanticNetwork;
         this.uid = uid;
         this.decreaseRate = 0.25;
         this.coopScale = 0.1;
+        this.activationMap = new HashMap<>();
 
         this.higherClasses = semanticNetwork.getOntModel()
                 .getOntClass(OntologyConstants.PLACE_URI)
@@ -178,10 +190,8 @@ public class RecommenderSession {
         if (!higherClasses.contains(ontClass.getURI()) &&
                 !OntologyConstants.PLACE_URI.equals(ontClass.getURI())
         ) {
-            List<ClassProperties> ancestors = ancestorClasses
-                    .toList()
+            List<ClassProperties> ancestors = filterByNamespace(namespace, ancestorClasses)
                     .stream()
-                    .filter(ontClass1 -> namespace.equals(ontClass1.getNameSpace()))
                     .map(OntClass::getURI)
                     .map(uri -> propertiesManager
                             .getClassProperties(uri, getUser().getUid()))
@@ -217,6 +227,20 @@ public class RecommenderSession {
     }
 
     /**
+     * Filter a group of {@code OntClass} by a specific namespace.
+     * @param namespace             ontology namespace
+     * @param ancestorClasses       ontology classes to filter
+     * @return                      list of ontology classes
+     */
+    private List<OntClass> filterByNamespace(String namespace, ExtendedIterator<OntClass> ancestorClasses) {
+        return ancestorClasses
+                .toList()
+                .stream()
+                .filter(ontClass1 -> namespace.equals(ontClass1.getNameSpace()))
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Write to a file state of the semantic network as a JSON.
      * @throws IOException
      */
@@ -231,6 +255,12 @@ public class RecommenderSession {
         }
     }
 
+    /**
+     * Recursively transform a node of the network into a JSON object.
+     * @param ontClass          node to transform
+     * @param visitedSet        set of visited notes for the DFS
+     * @return                  A new JSON object representing the sub tree with the node as root.
+     */
     private JSONObject toJSONObject(OntClass ontClass, Set<OntClass> visitedSet) {
         JSONObject obj = new JSONObject();
         obj.put("name", ontClass.getURI().split("#")[1]);
@@ -258,14 +288,77 @@ public class RecommenderSession {
         return obj;
     }
 
-    //  TODO get recommendations for ont classes
-    //      - Parameters: Context factor level of fulfillment.
-    //      - From each context factor, spread fulfillment and
-    //          store in a collection each ont class/uri with its
-    //          uri, activation and preference.
-    //      - Return collection ordered by preference * activation
-    public Set<OntClass> getRecommendation(Map<ContextFactor, Double> fulfillments) {
-        return null;
+    /**
+     * Return a list of {@code OntClass} based on their preference and confidence and
+     * taking into account the fulfillment of each context factor.
+     * @param fulfillment       A map of {@code ContextFactor} to level of fulfillment.
+     * @return                  A list ordered by activion * preference * confidence.
+     */
+    public List<OntClass> getRecommendation(Map<ContextFactor, Double> fulfillment) {
+        resetActivations();
+
+        // Update activations for ontology classes related explicitly with the
+        // context factors.
+        List<Relevance> relevanceList = contextManager.listRelevancesByUserId(uid);
+        relevanceList.forEach(r ->
+                activationMap.put(
+                        semanticNetwork.getOntClass(r.getUri()),
+                        r.getValue() * fulfillment.get(r.getContextFactor())));
+
+        spreadActivation();
+
+        // Add preference and confidence
+        List<Map.Entry<OntClass, Double> > entryList = new ArrayList<>(activationMap.entrySet());
+        for (Map.Entry<OntClass, Double> entry : entryList) {
+            ClassProperties properties = propertiesManager.getClassProperties(entry.getKey().getURI(), uid);
+            entry.setValue(entry.getValue() * properties.getPreference() * properties.getConfidence());
+        }
+
+        // Order by activation * confidence * preference
+        Collections.sort(entryList, Comparator.comparing(Map.Entry::getValue));
+
+        // return OntClasses
+        return entryList.stream().map(Map.Entry::getKey).collect(Collectors.toList());
+
+    }
+
+    /**
+     * Spread activation to a node relative to its ancestors.
+     * @param ontClass          node to set activation
+     * @param ancestorClasses   ancestors of the node
+     */
+    public void activate(OntClass ontClass, ExtendedIterator<OntClass> ancestorClasses) {
+        String namespace = ontClass.getNameSpace();
+        if (!higherClasses.contains(ontClass.getURI()) &&
+                !OntologyConstants.PLACE_URI.equals(ontClass.getURI())
+        ) {
+            List<OntClass> ancestors = filterByNamespace(namespace, ancestorClasses);
+            Double currActivation = activationMap.getOrDefault(ontClass, 0D);
+            activationMap.put(ontClass, currActivation + ancestors.stream()
+                    .map(activationMap::get)
+                    .reduce((x,y) -> x+y)
+                    .orElse(0D));
+        }
+    }
+
+    /**
+     * Turn all activations into 0.
+     */
+    public void resetActivations() {
+        @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
+        for (OntClass ontClass : iterable) {
+            activationMap.put(ontClass, 0D);
+        }
+    }
+
+    /**
+     * Spread activation to the network.
+     */
+    public void spreadActivation() {
+        @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
+        for (OntClass ontClass : iterable) {
+            activate(ontClass, ontClass.listSuperClasses(true));
+        }
     }
 
 }

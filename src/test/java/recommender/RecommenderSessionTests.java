@@ -6,6 +6,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import recommender.persistence.entity.User;
 import recommender.persistence.manager.ClassPropertiesManager;
+import recommender.persistence.manager.ContextManager;
 import recommender.persistence.manager.UserManager;
 import recommender.semantic.network.SemanticNetwork;
 import recommender.semantic.util.constants.OntologyConstants;
@@ -27,8 +28,9 @@ public class RecommenderSessionTests {
 
         ClassPropertiesManager propertiesManager = new ClassPropertiesManager();
         SemanticNetwork semanticNetwork = new SemanticNetwork();
+        ContextManager contextManager = new ContextManager();
 
-        recommenderSession = new RecommenderSession(userManager, propertiesManager, semanticNetwork, uid);
+        recommenderSession = new RecommenderSession(userManager, propertiesManager, contextManager, semanticNetwork, uid);
     }
 
     @AfterClass

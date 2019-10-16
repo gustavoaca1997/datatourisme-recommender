@@ -1,6 +1,9 @@
 import recommender.RecommenderSession;
+import recommender.persistence.entity.ContextFactor;
+import recommender.persistence.entity.Relevance;
 import recommender.persistence.entity.User;
 import recommender.persistence.manager.ClassPropertiesManager;
+import recommender.persistence.manager.ContextManager;
 import recommender.persistence.manager.UserManager;
 import recommender.semantic.network.SemanticNetwork;
 
@@ -14,8 +17,16 @@ import java.util.Scanner;
 public class Main {
     private static RecommenderSession recommenderSession;
     private static Scanner scanner;
+    private static ClassPropertiesManager propertiesManager;
+    private static SemanticNetwork semanticNetwork;
+    private static ContextManager contextManager;
+    private static User user;
+    private static Map<ContextFactor, Double> fulfillment;
 
     public static void main(String[] args) throws IOException {
+
+        fulfillment = new HashMap<>();
+
         // Ask for username
         scanner = new Scanner(System.in);
         System.out.print("User: ");
@@ -26,19 +37,22 @@ public class Main {
         Integer uid;
         boolean newUser = false;
         try {
-            User user = userManager.getUser(username);
+            user = userManager.getUser(username);
             uid = user.getUid();
         } catch (NoSuchElementException | NoResultException e) {
             uid = userManager.addUser(User.builder().username(username).build());
+            user = userManager.getUser(username);
             newUser = true;
         }
 
         // Create new recommender session
-        ClassPropertiesManager propertiesManager = new ClassPropertiesManager();
-        SemanticNetwork semanticNetwork = new SemanticNetwork();
+        propertiesManager = new ClassPropertiesManager();
+        semanticNetwork = new SemanticNetwork();
+        contextManager = new ContextManager();
 
-        recommenderSession = new RecommenderSession(userManager, propertiesManager,
-                semanticNetwork, uid);
+        recommenderSession = new RecommenderSession(
+                userManager, propertiesManager,
+                contextManager, semanticNetwork, uid);
 
         // If it is a new user, initial spreading is required
         if (newUser) {
@@ -66,6 +80,15 @@ public class Main {
                 case 4:     initialSpreading();
                             break;
 
+                case 5:     addContextFactor();
+                            break;
+
+                case 6:     setFulfillment();
+                            break;
+
+                case 7:     setRelevance();
+                            break;
+
                 default:    System.out.println("Invalid option.");
             }
         }
@@ -76,7 +99,10 @@ public class Main {
                 "1: Show options\n" +
                 "2: Update preference of a POI\n" +
                 "3: Export JSON\n" +
-                "4: Initial spreading");
+                "4: Initial spreading\n" +
+                "5: Add context factor\n" +
+                "6: Set fulfillment of a context factor\n" +
+                "7: Set relevance to context factor");
     }
 
     private static void askForPreference() {
@@ -101,5 +127,33 @@ public class Main {
         System.out.print("File path: ");
         String filename = scanner.next();
         recommenderSession.exportJSON(filename);
+    }
+
+    private static void addContextFactor() {
+        System.out.print("Context Factor name: ");
+        String name = scanner.next();
+        contextManager.addContextFactor(ContextFactor.builder()
+                .name(name)
+                .build());
+    }
+
+    private static void setRelevance() {
+        System.out.print("Context factor name: ");
+        String name = scanner.next();
+        System.out.print("Relevance value: ");
+        Double value = scanner.nextDouble();
+        contextManager.addRelevance(Relevance.builder()
+                .value(value)
+                .user(user)
+                .contextFactor(contextManager.getContextFactor(name))
+                .build());
+    }
+
+    private static void setFulfillment() {
+        System.out.print("Context Factor name: ");
+        String name = scanner.next();
+        System.out.print("Fulfillment value: ");
+        Double value = scanner.nextDouble();
+        fulfillment.put(contextManager.getContextFactor(name), value);
     }
 }
