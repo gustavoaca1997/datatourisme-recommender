@@ -8,7 +8,6 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import recommender.persistence.entity.ClassProperties;
-import recommender.persistence.entity.ContextFactor;
 import recommender.persistence.entity.Relevance;
 import recommender.persistence.entity.User;
 import recommender.persistence.manager.ClassPropertiesManager;
@@ -22,7 +21,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,7 +46,7 @@ public class RecommenderSession {
 
     private final Set<String> higherClasses;
 
-    private final Map<OntClass, Double> activationMap;
+    private final Map<String, Double> activationMap;
 
     public RecommenderSession(UserManager userManager, ClassPropertiesManager classPropertiesManager,
                               ContextManager contextManager,
@@ -294,7 +292,7 @@ public class RecommenderSession {
      * @param fulfillment       A map of {@code ContextFactor} to level of fulfillment.
      * @return                  A list ordered by activion * preference * confidence.
      */
-    public List<OntClass> getRecommendation(Map<ContextFactor, Double> fulfillment) {
+    public List<Map.Entry<String, Double>> getRecommendation(Map<String, Double> fulfillment) {
         resetActivations();
 
         // Update activations for ontology classes related explicitly with the
@@ -302,23 +300,24 @@ public class RecommenderSession {
         List<Relevance> relevanceList = contextManager.listRelevancesByUserId(uid);
         relevanceList.forEach(r ->
                 activationMap.put(
-                        semanticNetwork.getOntClass(r.getUri()),
-                        r.getValue() * fulfillment.get(r.getContextFactor())));
+                        r.getUri(),
+                        activationMap.get(r.getUri()) + r.getValue() * fulfillment.get(r.getContextFactor().getName())));
 
         spreadActivation();
 
         // Add preference and confidence
-        List<Map.Entry<OntClass, Double> > entryList = new ArrayList<>(activationMap.entrySet());
-        for (Map.Entry<OntClass, Double> entry : entryList) {
-            ClassProperties properties = propertiesManager.getClassProperties(entry.getKey().getURI(), uid);
+        List<Map.Entry<String, Double> > entryList = new ArrayList<>(activationMap.entrySet());
+        for (Map.Entry<String, Double> entry : entryList) {
+            if (entry.getKey().equals(OntologyConstants.PLACE_URI)) continue;
+            ClassProperties properties = propertiesManager.getClassProperties(entry.getKey(), uid);
             entry.setValue(entry.getValue() * properties.getPreference() * properties.getConfidence());
         }
 
         // Order by activation * confidence * preference
-        Collections.sort(entryList, Comparator.comparing(Map.Entry::getValue));
+        Collections.sort(entryList, (e1, e2) -> e2.getValue().compareTo(e1.getValue()));
 
         // return OntClasses
-        return entryList.stream().map(Map.Entry::getKey).collect(Collectors.toList());
+        return entryList;
 
     }
 
@@ -329,16 +328,13 @@ public class RecommenderSession {
      */
     public void activate(OntClass ontClass, ExtendedIterator<OntClass> ancestorClasses) {
         String namespace = ontClass.getNameSpace();
-        if (!higherClasses.contains(ontClass.getURI()) &&
-                !OntologyConstants.PLACE_URI.equals(ontClass.getURI())
-        ) {
-            List<OntClass> ancestors = filterByNamespace(namespace, ancestorClasses);
-            Double currActivation = activationMap.getOrDefault(ontClass, 0D);
-            activationMap.put(ontClass, currActivation + ancestors.stream()
-                    .map(activationMap::get)
-                    .reduce((x,y) -> x+y)
-                    .orElse(0D));
-        }
+        List<OntClass> ancestors = filterByNamespace(namespace, ancestorClasses);
+        Double currActivation = activationMap.getOrDefault(ontClass.getURI(), 0D);
+        Double add = ancestors.stream()
+                .map(OntClass::getURI)
+                .map(a -> activationMap.getOrDefault(a, 0D))
+                .reduce(0D, (x,y) -> x+y);
+        activationMap.put(ontClass.getURI(), currActivation + add);
     }
 
     /**
@@ -347,7 +343,7 @@ public class RecommenderSession {
     public void resetActivations() {
         @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
         for (OntClass ontClass : iterable) {
-            activationMap.put(ontClass, 0D);
+            activationMap.put(ontClass.getURI(), 0D);
         }
     }
 
