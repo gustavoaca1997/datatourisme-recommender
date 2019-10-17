@@ -72,4 +72,13 @@ public class SemanticNetwork implements Iterable {
         in.close();
     }
 
+    /**
+     * Return {@code OntClass} with the uri specified.
+     * @param uri   Unique Resource Identifier of the Ontology Class
+     * @return      a {@code OntClass} with the uri.
+     */
+    public OntClass getOntClass(String uri) {
+        return ontModel.getOntClass(uri);
+    }
+
 }

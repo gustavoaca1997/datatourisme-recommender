@@ -88,6 +88,27 @@ public class ContextManager {
         }
     }
 
+    public ContextFactor getContextFactor(String name) {
+        try (Session session = HibernateUtil.openSession()) {
+
+            CriteriaBuilder cb = session.getCriteriaBuilder();
+            CriteriaQuery<ContextFactor> criteriaQuery = cb.createQuery(ContextFactor.class);
+            Root<ContextFactor> root = criteriaQuery.from(ContextFactor.class);
+            Predicate predicate = cb.like(root.get("name"), name);
+            criteriaQuery.select(root).where(predicate);
+            Query<ContextFactor> query = session.createQuery(criteriaQuery);
+
+            ContextFactor contextFactor = query.getSingleResult();
+
+            if (contextFactor == null) {
+                throw new NoSuchElementException(
+                        String.format("Context factor with name %s not found", name)
+                );
+            }
+            return contextFactor;
+        }
+    }
+
     public Relevance getRelevance(Integer rid) {
         Transaction tx = null;
         try (Session session = HibernateUtil.openSession()) {

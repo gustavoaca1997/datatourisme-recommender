@@ -18,12 +18,12 @@ public class SemanticNetworkIterator implements Iterator<OntClass> {
     SemanticNetworkIterator(SemanticNetwork semanticNetwork) {
         queue = new LinkedList<>();
         visitedSet = new HashSet<>();
-        OntClass pointOfInterestClass = semanticNetwork
+        OntClass placeOfInterestClass = semanticNetwork
                 .getOntModel()
                 .getOntClass(OntologyConstants.PLACE_URI);
-        assert(pointOfInterestClass != null);
-        queue.add(pointOfInterestClass);
-        visitedSet.add(pointOfInterestClass);
+        assert(placeOfInterestClass != null);
+        queue.add(placeOfInterestClass);
+        visitedSet.add(placeOfInterestClass);
     }
 
     public boolean hasNext() {
