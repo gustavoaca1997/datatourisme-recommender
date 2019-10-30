@@ -161,6 +161,9 @@ public class RecommenderSession {
     }
 
 
+    /**
+     * Propagate preference and confidence downwards
+     */
     private void downwardsPropagation() {
         @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
         for (OntClass ontClass : iterable) {
@@ -168,7 +171,11 @@ public class RecommenderSession {
         }
     }
 
-
+    /**
+     * Propagate preference and confidence to ancestors in semantic network.
+     * @param ontClass      source node
+     * @param visitedSet    set of visited nodes
+     */
     public void upwardsPropagation(OntClass ontClass, Set<OntClass> visitedSet) {
         for (OntClass superClass : ontClass.listSuperClasses(true).toList()) {
             String namespace = ontClass.getNameSpace();
@@ -183,6 +190,12 @@ public class RecommenderSession {
         }
     }
 
+    /**
+     * Propagate confidence and preference using relative ancestor classes. If one class does not
+     * exist in DB, create it.
+     * @param ontClass          source node
+     * @param ancestorClasses   ancestors of the source node
+     */
     public void propagate(OntClass ontClass, ExtendedIterator<OntClass> ancestorClasses) {
         String namespace = ontClass.getNameSpace();
         if (!higherClasses.contains(ontClass.getURI()) &&

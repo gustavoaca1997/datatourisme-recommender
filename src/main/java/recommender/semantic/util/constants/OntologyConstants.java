@@ -46,4 +46,5 @@ public final class OntologyConstants {
             "https://www.datatourisme.gouv.fr/ontology/core#Transport";
 
     public static final String MODEL_FILE = "datatourisme.ttl";
+//    public static final String MODEL_FILE = "individuals.ttl";
 }
