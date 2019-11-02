@@ -31,6 +31,10 @@ import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.ObjectUtils.min;
 
+/**
+ * This class represents a session of a user, with connection to the MySQL and Fuseki server.
+ */
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -39,18 +43,25 @@ public class RecommenderSession {
     private final ClassPropertiesManager propertiesManager;
     private final ContextManager contextManager;
     private final SemanticNetwork semanticNetwork;
-    private final Integer uid;                      // user id
 
-    private Double decreaseRate ;                   // how much does confidence decrease in initial spreading
-    private Double coopScale = 0.1;                 // cooperation scale between current values and new values
+    // user id
+    private final Integer uid;
+
+    // how much does confidence decrease in initial spreading
+    private Double decreaseRate;
+
+    // cooperation scale between current values and new values
+    private Double coopScale = 0.1;
 
     private final Set<String> higherClasses;
 
     private final Map<String, Double> activationMap;
 
-    public RecommenderSession(UserManager userManager, ClassPropertiesManager classPropertiesManager,
+    public RecommenderSession(UserManager userManager,
+                              ClassPropertiesManager classPropertiesManager,
                               ContextManager contextManager,
-                              SemanticNetwork semanticNetwork, Integer uid) {
+                              SemanticNetwork semanticNetwork,
+                              Integer uid) {
         this.userManager = userManager;
         this.propertiesManager = classPropertiesManager;
         this.contextManager = contextManager;
@@ -305,7 +316,7 @@ public class RecommenderSession {
      * @param fulfillment       A map of {@code ContextFactor} to level of fulfillment.
      * @return                  A list ordered by activion * preference * confidence.
      */
-    public List<Map.Entry<String, Double>> getRecommendation(Map<String, Double> fulfillment) {
+    public List<Map.Entry<String, Double>> getRecommendedClasses(Map<String, Double> fulfillment) {
         resetActivations();
 
         // Update activations for ontology classes related explicitly with the
@@ -332,6 +343,18 @@ public class RecommenderSession {
         // return OntClasses
         return entryList;
 
+    }
+
+    public List<RDFResult> getRecommendedIndividuals(String uriSuperClass) {
+        String preffixes = "PREFIX datatourisme: <https://www.datatourisme.gouv.fr/ontology/core#>\n" +
+                "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
+                "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n";
+        return IndividualsService.getResults(String.format(preffixes + "SELECT ?label ?uri\n" +
+                "WHERE {\n" +
+                "  ?uri rdf:type <%s> .\n" +
+                "  ?uri rdfs:label ?label\n" +
+                "}\n" +
+                "LIMIT 5", uriSuperClass));
     }
 
     /**

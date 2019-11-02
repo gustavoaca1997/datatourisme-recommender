@@ -69,7 +69,7 @@ public class Main {
             "early_morning"
     );
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
 
         fulfillment = new HashMap<>();
 
@@ -133,7 +133,12 @@ public class Main {
                 case 6:     initialData();
                             break;
 
-                case 7:     System.out.println(recommenderSession.getRecommendation(fulfillment));
+                case 7:     List<Map.Entry<String, Double>> entryList = recommenderSession.getRecommendedClasses(fulfillment);
+                            for (Map.Entry e : entryList ) {
+                                String uri = (String) e.getKey();
+                                System.out.println("\n" + uri + ":");
+                                System.out.println(recommenderSession.getRecommendedIndividuals(uri));
+                            }
                             break;
 
                 default:    System.out.println("Invalid option.");
