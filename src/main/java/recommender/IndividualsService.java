@@ -26,7 +26,11 @@ public class IndividualsService {
             List<RDFResult> results = new ArrayList<>();
             while (result.hasNext()) {
                 QuerySolution soln = result.nextSolution();
-                results.add(new RDFResult(soln.get("label"), soln.get("uri")));
+                results.add(new RDFResult(
+                        soln.get("label").asLiteral().getString(),
+                        soln.get("uri").asResource().getURI(),
+                        soln.get("latitude").asLiteral().getDouble(),
+                        soln.get("longitude").asLiteral().getDouble()));
             }
             return results;
         }

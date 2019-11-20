@@ -3,6 +3,7 @@ package recommender;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import math.GeoLocation;
 import org.apache.jena.ontology.OntClass;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.json.simple.JSONArray;
@@ -345,16 +346,38 @@ public class RecommenderSession {
 
     }
 
-    public List<RDFResult> getRecommendedIndividuals(String uriSuperClass) {
+    public List<RDFResult> getRecommendedIndividuals(
+            String uriSuperClass, double latitude, double longitude, double distance
+    ) {
+        GeoLocation center = GeoLocation.fromDegrees(latitude, longitude);
+        GeoLocation[] boundingCoords = center.boundingCoordinates(distance, GeoLocation.EARTH_RAD);
+        GeoLocation minBound = boundingCoords[0], maxBound = boundingCoords[1];
+
         String preffixes = "PREFIX datatourisme: <https://www.datatourisme.gouv.fr/ontology/core#>\n" +
                 "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
-                "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n";
-        return IndividualsService.getResults(String.format(preffixes + "SELECT ?label ?uri\n" +
-                "WHERE {\n" +
-                "  ?uri rdf:type <%s> .\n" +
-                "  ?uri rdfs:label ?label\n" +
-                "}\n" +
-                "LIMIT 5", uriSuperClass));
+                "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n" +
+                "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n";
+        List<RDFResult> results = IndividualsService.getResults(String.format(preffixes + "SELECT ?label ?uri ?latitude ?longitude\n" +
+                        "WHERE {\n" +
+                        "  ?uri ?predicate ?location .\n" +
+                        "  ?uri rdfs:label ?label .\n" +
+                        "  ?uri rdf:type <%s> .\n" +
+                        "  ?location <http://schema.org/geo> ?geo .\n" +
+                        "  ?geo <http://schema.org/latitude> ?latitude .\n" +
+                        "  ?geo <http://schema.org/longitude> ?longitude .\n" +
+                        "  \n" +
+                        "  filter(?latitude <= \"%s\"^^xsd:decimal && ?latitude >= \"%s\"^^xsd:decimal && " +
+                        "         ?longitude <= \"%s\"^^xsd:decimal && ?longitude >= \"%s\"^^xsd:decimal)" +
+                        "}"+
+                "LIMIT 5", uriSuperClass, maxBound.getLatitudeInDegrees(), minBound.getLatitudeInDegrees(),
+                    maxBound.getLongitudeInDegrees(), minBound.getLongitudeInDegrees()));
+
+        results.forEach(r -> {
+                    GeoLocation loc = GeoLocation.fromDegrees(r.getLatitude(), r.getLongitude());
+                    r.setDistance(center.distanceTo(loc, GeoLocation.EARTH_RAD));
+                });
+
+        return results.stream().filter(r -> r.getDistance() <= distance).collect(Collectors.toList());
     }
 
     /**

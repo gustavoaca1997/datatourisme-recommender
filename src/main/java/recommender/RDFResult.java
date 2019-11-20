@@ -1,17 +1,19 @@
 package recommender;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.apache.jena.rdf.model.RDFNode;
 
 @Getter
 @Setter
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class RDFResult {
-    private RDFNode label;
-    private RDFNode uri;
+    private final String label;
+    private final String uri;
+    private final Double latitude;
+    private final Double longitude;
+    private Double distance;
     public String toString() {
-        return label.toString();
+        return String.format("%s <%s km>", label, distance);
     }
 }
