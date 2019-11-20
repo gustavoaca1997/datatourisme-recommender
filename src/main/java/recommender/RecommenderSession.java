@@ -3,6 +3,7 @@ package recommender;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import math.GeoLocation;
 import org.apache.jena.ontology.OntClass;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.json.simple.JSONArray;
@@ -31,6 +32,10 @@ import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.ObjectUtils.min;
 
+/**
+ * This class represents a session of a user, with connection to the MySQL and Fuseki server.
+ */
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -39,18 +44,25 @@ public class RecommenderSession {
     private final ClassPropertiesManager propertiesManager;
     private final ContextManager contextManager;
     private final SemanticNetwork semanticNetwork;
-    private final Integer uid;                      // user id
 
-    private Double decreaseRate ;                   // how much does confidence decrease in initial spreading
-    private Double coopScale = 0.1;                 // cooperation scale between current values and new values
+    // user id
+    private final Integer uid;
+
+    // how much does confidence decrease in initial spreading
+    private Double decreaseRate;
+
+    // cooperation scale between current values and new values
+    private Double coopScale = 0.1;
 
     private final Set<String> higherClasses;
 
     private final Map<String, Double> activationMap;
 
-    public RecommenderSession(UserManager userManager, ClassPropertiesManager classPropertiesManager,
+    public RecommenderSession(UserManager userManager,
+                              ClassPropertiesManager classPropertiesManager,
                               ContextManager contextManager,
-                              SemanticNetwork semanticNetwork, Integer uid) {
+                              SemanticNetwork semanticNetwork,
+                              Integer uid) {
         this.userManager = userManager;
         this.propertiesManager = classPropertiesManager;
         this.contextManager = contextManager;
@@ -161,6 +173,9 @@ public class RecommenderSession {
     }
 
 
+    /**
+     * Propagate preference and confidence downwards
+     */
     private void downwardsPropagation() {
         @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
         for (OntClass ontClass : iterable) {
@@ -168,7 +183,11 @@ public class RecommenderSession {
         }
     }
 
-
+    /**
+     * Propagate preference and confidence to ancestors in semantic network.
+     * @param ontClass      source node
+     * @param visitedSet    set of visited nodes
+     */
     public void upwardsPropagation(OntClass ontClass, Set<OntClass> visitedSet) {
         for (OntClass superClass : ontClass.listSuperClasses(true).toList()) {
             String namespace = ontClass.getNameSpace();
@@ -183,6 +202,12 @@ public class RecommenderSession {
         }
     }
 
+    /**
+     * Propagate confidence and preference using relative ancestor classes. If one class does not
+     * exist in DB, create it.
+     * @param ontClass          source node
+     * @param ancestorClasses   ancestors of the source node
+     */
     public void propagate(OntClass ontClass, ExtendedIterator<OntClass> ancestorClasses) {
         String namespace = ontClass.getNameSpace();
         if (!higherClasses.contains(ontClass.getURI()) &&
@@ -292,7 +317,7 @@ public class RecommenderSession {
      * @param fulfillment       A map of {@code ContextFactor} to level of fulfillment.
      * @return                  A list ordered by activion * preference * confidence.
      */
-    public List<Map.Entry<String, Double>> getRecommendation(Map<String, Double> fulfillment) {
+    public List<Map.Entry<String, Double>> getRecommendedClasses(Map<String, Double> fulfillment) {
         resetActivations();
 
         // Update activations for ontology classes related explicitly with the
@@ -319,6 +344,40 @@ public class RecommenderSession {
         // return OntClasses
         return entryList;
 
+    }
+
+    public List<RDFResult> getRecommendedIndividuals(
+            String uriSuperClass, double latitude, double longitude, double distance
+    ) {
+        GeoLocation center = GeoLocation.fromDegrees(latitude, longitude);
+        GeoLocation[] boundingCoords = center.boundingCoordinates(distance, GeoLocation.EARTH_RAD);
+        GeoLocation minBound = boundingCoords[0], maxBound = boundingCoords[1];
+
+        String preffixes = "PREFIX datatourisme: <https://www.datatourisme.gouv.fr/ontology/core#>\n" +
+                "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
+                "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n" +
+                "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n";
+        List<RDFResult> results = IndividualsService.getResults(String.format(preffixes + "SELECT ?label ?uri ?latitude ?longitude\n" +
+                        "WHERE {\n" +
+                        "  ?uri ?predicate ?location .\n" +
+                        "  ?uri rdfs:label ?label .\n" +
+                        "  ?uri rdf:type <%s> .\n" +
+                        "  ?location <http://schema.org/geo> ?geo .\n" +
+                        "  ?geo <http://schema.org/latitude> ?latitude .\n" +
+                        "  ?geo <http://schema.org/longitude> ?longitude .\n" +
+                        "  \n" +
+                        "  filter(?latitude <= \"%s\"^^xsd:decimal && ?latitude >= \"%s\"^^xsd:decimal && " +
+                        "         ?longitude <= \"%s\"^^xsd:decimal && ?longitude >= \"%s\"^^xsd:decimal)" +
+                        "}"+
+                "LIMIT 5", uriSuperClass, maxBound.getLatitudeInDegrees(), minBound.getLatitudeInDegrees(),
+                    maxBound.getLongitudeInDegrees(), minBound.getLongitudeInDegrees()));
+
+        results.forEach(r -> {
+                    GeoLocation loc = GeoLocation.fromDegrees(r.getLatitude(), r.getLongitude());
+                    r.setDistance(center.distanceTo(loc, GeoLocation.EARTH_RAD));
+                });
+
+        return results.stream().filter(r -> r.getDistance() <= distance).collect(Collectors.toList());
     }
 
     /**

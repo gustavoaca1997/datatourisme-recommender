@@ -1,3 +1,4 @@
+import recommender.RDFResult;
 import recommender.RecommenderSession;
 import recommender.persistence.entity.ContextFactor;
 import recommender.persistence.entity.Relevance;
@@ -24,6 +25,9 @@ public class Main {
     private static ContextManager contextManager;
     private static User user;
     private static Map<String, Double> fulfillment;
+    private static double latitude;
+    private static double longitude;
+    private static double distance;
 
     private static List<String> baseUris = Arrays.asList(
             "https://www.datatourisme.gouv.fr/ontology/core#Museum",
@@ -69,7 +73,7 @@ public class Main {
             "early_morning"
     );
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
 
         fulfillment = new HashMap<>();
 
@@ -103,7 +107,9 @@ public class Main {
         // If it is a new user, initial spreading is required
         if (newUser) {
             initialSpreading();
-            initialData();
+            // Context factors
+            contextFactors.forEach(name -> contextManager.addContextFactor(ContextFactor.builder()
+                    .name(name).build()));
         }
 
         // User feedback
@@ -133,7 +139,24 @@ public class Main {
                 case 6:     initialData();
                             break;
 
-                case 7:     System.out.println(recommenderSession.getRecommendation(fulfillment));
+                case 7:     List<Map.Entry<String, Double>> entryList =
+                                recommenderSession.getRecommendedClasses(fulfillment);
+                            for (Map.Entry e : entryList ) {
+                                String uri = (String) e.getKey();
+                                Double rating = (Double) e.getValue();
+                                List<RDFResult> results = recommenderSession.getRecommendedIndividuals(
+                                        uri, latitude, longitude, distance);
+                                if (results.size() > 0) {
+                                    System.out.println(String.format("\n%s, rating: %s:", uri, rating));
+                                    System.out.println(results);
+                                }
+                            }
+                            break;
+
+                case 8:     System.out.print("Type your latitude, longitude and then the maximum distance: ");
+                            latitude = scanner.nextDouble();
+                            longitude = scanner.nextDouble();
+                            distance = scanner.nextDouble();
                             break;
 
                 default:    System.out.println("Invalid option.");
@@ -149,7 +172,8 @@ public class Main {
                 "4: Initial spreading\n" +
                 "5: Set fulfillment of a context factor\n" +
                 "6: Load initial data\n" +
-                "7: Get recommendation");
+                "7: Get recommendation\n" +
+                "8: Set location");
     }
 
     private static void askForPreference() {
@@ -186,9 +210,6 @@ public class Main {
     }
 
     private static void initialData() {
-        // Context factors
-        contextFactors.forEach(name -> contextManager.addContextFactor(ContextFactor.builder()
-                .name(name).build()));
 
         // Relevances
         for (int i=0; i<baseUris.size(); i++) {
