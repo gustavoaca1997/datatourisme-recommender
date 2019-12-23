@@ -20,14 +20,7 @@ import recommender.semantic.util.constants.OntologyConstants;
 import javax.persistence.NoResultException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.ObjectUtils.min;
@@ -330,8 +323,19 @@ public class RecommenderSession {
 
         spreadActivation();
 
-        // Add preference and confidence
+        // Filter not sink nodes out
         List<Map.Entry<String, Double> > entryList = new ArrayList<>(activationMap.entrySet());
+        entryList = entryList
+                .stream()
+                .filter(entry ->
+                        semanticNetwork
+                                .getOntClass(entry.getKey())
+                                .listSubClasses(true)
+                                .toList()
+                                .isEmpty())
+                .collect(Collectors.toList());
+
+        // Add preference and confidence
         for (Map.Entry<String, Double> entry : entryList) {
             if (entry.getKey().equals(OntologyConstants.PLACE_URI)) continue;
             ClassProperties properties = propertiesManager.getClassProperties(entry.getKey(), uid);
@@ -352,25 +356,7 @@ public class RecommenderSession {
         GeoLocation center = GeoLocation.fromDegrees(latitude, longitude);
         GeoLocation[] boundingCoords = center.boundingCoordinates(distance, GeoLocation.EARTH_RAD);
         GeoLocation minBound = boundingCoords[0], maxBound = boundingCoords[1];
-
-        String preffixes = "PREFIX datatourisme: <https://www.datatourisme.gouv.fr/ontology/core#>\n" +
-                "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
-                "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n" +
-                "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n";
-        List<RDFResult> results = IndividualsService.getResults(String.format(preffixes + "SELECT ?label ?uri ?latitude ?longitude\n" +
-                        "WHERE {\n" +
-                        "  ?uri ?predicate ?location .\n" +
-                        "  ?uri rdfs:label ?label .\n" +
-                        "  ?uri rdf:type <%s> .\n" +
-                        "  ?location <http://schema.org/geo> ?geo .\n" +
-                        "  ?geo <http://schema.org/latitude> ?latitude .\n" +
-                        "  ?geo <http://schema.org/longitude> ?longitude .\n" +
-                        "  \n" +
-                        "  filter(?latitude <= \"%s\"^^xsd:decimal && ?latitude >= \"%s\"^^xsd:decimal && " +
-                        "         ?longitude <= \"%s\"^^xsd:decimal && ?longitude >= \"%s\"^^xsd:decimal)" +
-                        "}"+
-                "LIMIT 5", uriSuperClass, maxBound.getLatitudeInDegrees(), minBound.getLatitudeInDegrees(),
-                    maxBound.getLongitudeInDegrees(), minBound.getLongitudeInDegrees()));
+        List<RDFResult> results = IndividualsService.getResults(uriSuperClass, maxBound, minBound);
 
         results.forEach(r -> {
                     GeoLocation loc = GeoLocation.fromDegrees(r.getLatitude(), r.getLongitude());

@@ -3,6 +3,7 @@ package recommender;
 
 import lombok.Getter;
 import lombok.Setter;
+import math.GeoLocation;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.QuerySolution;
@@ -18,9 +19,28 @@ import java.util.List;
 @Getter
 @Setter
 public class IndividualsService {
-    public static String serviceURI = "http://localhost:3030/Datatourisme/sparql";
+    public static String serviceURI = "http://localhost:3030/datatourisme/query";
+    public static String preffixes = "PREFIX datatourisme: <https://www.datatourisme.gouv.fr/ontology/core#>\n" +
+            "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
+            "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n" +
+            "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n";
 
-    public static List<RDFResult> getResults(String query) {
+    public static List<RDFResult> getResults(String uriSuperClass, GeoLocation maxBound, GeoLocation minBound) {
+        String query = String.format(preffixes + "SELECT ?label ?uri ?latitude ?longitude\n" +
+                        "WHERE {\n" +
+                        "  ?uri ?predicate ?location .\n" +
+                        "  ?uri rdfs:label ?label .\n" +
+                        "  ?uri rdf:type <%s> .\n" +
+                        "  ?location <http://schema.org/geo> ?geo .\n" +
+                        "  ?geo <http://schema.org/latitude> ?latitude .\n" +
+                        "  ?geo <http://schema.org/longitude> ?longitude .\n" +
+                        "  \n" +
+                        "  filter(?latitude <= \"%s\"^^xsd:decimal && ?latitude >= \"%s\"^^xsd:decimal && " +
+                        "         ?longitude <= \"%s\"^^xsd:decimal && ?longitude >= \"%s\"^^xsd:decimal)" +
+                        "}"+
+                        "LIMIT 5", uriSuperClass, maxBound.getLatitudeInDegrees(), minBound.getLatitudeInDegrees(),
+                maxBound.getLongitudeInDegrees(), minBound.getLongitudeInDegrees());
+
         try (QueryExecution q = QueryExecutionFactory.sparqlService(serviceURI, query)) {
             ResultSet result = q.execSelect();
             List<RDFResult> results = new ArrayList<>();
