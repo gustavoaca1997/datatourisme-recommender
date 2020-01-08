@@ -38,4 +38,7 @@ public class User {
 
     @OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
     private Set<Relevance> relevanceSet;
+
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
+    private Set<Aging> agingSet;
 }

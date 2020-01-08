@@ -13,7 +13,8 @@ public class RDFResult {
     private final Double latitude;
     private final Double longitude;
     private Double distance;
+    private Double agingValue;
     public String toString() {
-        return String.format("%s <%s km>", label, distance);
+        return String.format("%s <%s km> (aging: %s)", label, distance, agingValue);
     }
 }

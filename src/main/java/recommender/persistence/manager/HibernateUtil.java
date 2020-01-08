@@ -3,6 +3,7 @@ package recommender.persistence.manager;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import recommender.persistence.entity.Aging;
 import recommender.persistence.entity.ClassProperties;
 import recommender.persistence.entity.ContextFactor;
 import recommender.persistence.entity.Relevance;
@@ -20,7 +21,8 @@ public final class HibernateUtil {
                     .addAnnotatedClass(User.class)
                     .addAnnotatedClass(ClassProperties.class)
                     .addAnnotatedClass(ContextFactor.class)
-                    .addAnnotatedClass(Relevance.class);
+                    .addAnnotatedClass(Relevance.class)
+                    .addAnnotatedClass(Aging.class);
             factory = config.buildSessionFactory();
         } catch (Throwable ex) {
             System.err.println("Failed to create sessionFactory object." + ex);

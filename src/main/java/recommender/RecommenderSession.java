@@ -8,9 +8,11 @@ import org.apache.jena.ontology.OntClass;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import recommender.persistence.entity.Aging;
 import recommender.persistence.entity.ClassProperties;
 import recommender.persistence.entity.Relevance;
 import recommender.persistence.entity.User;
+import recommender.persistence.manager.AgingManager;
 import recommender.persistence.manager.ClassPropertiesManager;
 import recommender.persistence.manager.ContextManager;
 import recommender.persistence.manager.UserManager;
@@ -20,7 +22,15 @@ import recommender.semantic.util.constants.OntologyConstants;
 import javax.persistence.NoResultException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.ObjectUtils.min;
@@ -36,6 +46,7 @@ public class RecommenderSession {
     private final UserManager userManager;
     private final ClassPropertiesManager propertiesManager;
     private final ContextManager contextManager;
+    private final AgingManager agingManager;
     private final SemanticNetwork semanticNetwork;
 
     // user id
@@ -45,7 +56,12 @@ public class RecommenderSession {
     private Double decreaseRate;
 
     // cooperation scale between current values and new values
-    private Double coopScale = 0.1;
+    private Double coopScale;
+
+    // how much does a place ages for a specific user.
+    private Double agingRate;
+    // Lower bound of a place's aging value. If value's less or equal than it, restart it to 1.
+    private Double agingValueLowerBound;
 
     private final Set<String> higherClasses;
 
@@ -54,15 +70,19 @@ public class RecommenderSession {
     public RecommenderSession(UserManager userManager,
                               ClassPropertiesManager classPropertiesManager,
                               ContextManager contextManager,
+                              AgingManager agingManager,
                               SemanticNetwork semanticNetwork,
                               Integer uid) {
         this.userManager = userManager;
         this.propertiesManager = classPropertiesManager;
         this.contextManager = contextManager;
+        this.agingManager = agingManager;
         this.semanticNetwork = semanticNetwork;
         this.uid = uid;
         this.decreaseRate = 0.25;
         this.coopScale = 0.1;
+        this.agingRate = 1D/5D;
+        this.agingValueLowerBound = 0.1D;
         this.activationMap = new HashMap<>();
 
         this.higherClasses = semanticNetwork.getOntModel()
@@ -100,7 +120,7 @@ public class RecommenderSession {
      * @param ancestors list of ancestors of the node
      * @return (Sum of ancestors' confidences) / (Number of ancestors) - alpha
      */
-    public Double aggregatedConfidence(List<ClassProperties> ancestors) {
+    private Double aggregatedConfidence(List<ClassProperties> ancestors) {
         Double sumOfConfidences = ancestors.stream()
                 .map(ClassProperties::getConfidence)
                 .reduce((c1, c2) -> c1 + c2).orElse(0D);
@@ -114,7 +134,7 @@ public class RecommenderSession {
      * @param ancestors list of ancestors of the node
      * @return (Weighted sum of preferences with confidence)/(sum of confidences)
      */
-    public Double aggregatedPreference(List<ClassProperties> ancestors) {
+    private Double aggregatedPreference(List<ClassProperties> ancestors) {
         Double weightedSumOfPreferences = ancestors.stream()
                 .map(a -> a.getConfidence() * a.getPreference())
                 .reduce((a1, a2) -> a1 + a2).orElse(0D);
@@ -131,7 +151,7 @@ public class RecommenderSession {
      * @param assignedPreference assigned value
      * @return new preference
      */
-    public Double updatedPreference(Double oldPreference, Double assignedPreference) {
+    private Double updatedPreference(Double oldPreference, Double assignedPreference) {
         return min(1D, oldPreference + coopScale * assignedPreference);
     }
 
@@ -142,7 +162,7 @@ public class RecommenderSession {
      * @param newConfidence     new or aggregated value of the condifende
      * @return new confidence
      */
-    public Double updatedConfidence(Double oldConfidence, Double newConfidence) {
+    private Double updatedConfidence(Double oldConfidence, Double newConfidence) {
         return (1 - coopScale) * oldConfidence + coopScale*newConfidence;
     }
 
@@ -181,7 +201,7 @@ public class RecommenderSession {
      * @param ontClass      source node
      * @param visitedSet    set of visited nodes
      */
-    public void upwardsPropagation(OntClass ontClass, Set<OntClass> visitedSet) {
+    private void upwardsPropagation(OntClass ontClass, Set<OntClass> visitedSet) {
         for (OntClass superClass : ontClass.listSuperClasses(true).toList()) {
             String namespace = ontClass.getNameSpace();
             if (namespace.equals(superClass.getNameSpace()) &&
@@ -201,7 +221,7 @@ public class RecommenderSession {
      * @param ontClass          source node
      * @param ancestorClasses   ancestors of the source node
      */
-    public void propagate(OntClass ontClass, ExtendedIterator<OntClass> ancestorClasses) {
+    private void propagate(OntClass ontClass, ExtendedIterator<OntClass> ancestorClasses) {
         String namespace = ontClass.getNameSpace();
         if (!higherClasses.contains(ontClass.getURI()) &&
                 !OntologyConstants.PLACE_URI.equals(ontClass.getURI())
@@ -353,17 +373,57 @@ public class RecommenderSession {
     public List<RDFResult> getRecommendedIndividuals(
             String uriSuperClass, double latitude, double longitude, double distance
     ) {
+        // Get results of specific class inside radius.
         GeoLocation center = GeoLocation.fromDegrees(latitude, longitude);
         GeoLocation[] boundingCoords = center.boundingCoordinates(distance, GeoLocation.EARTH_RAD);
         GeoLocation minBound = boundingCoords[0], maxBound = boundingCoords[1];
-        List<RDFResult> results = IndividualsService.getResults(uriSuperClass, maxBound, minBound);
+        List<RDFResult> results = IndividualsService.getResults(uriSuperClass, maxBound, minBound).subList(0, 5);
 
+        // Set distance and aging for user to each place.
         results.forEach(r -> {
                     GeoLocation loc = GeoLocation.fromDegrees(r.getLatitude(), r.getLongitude());
                     r.setDistance(center.distanceTo(loc, GeoLocation.EARTH_RAD));
+                    r.setAgingValue(agingManager.getAgingValue(r.getUri(), uid));
                 });
 
-        return results.stream().filter(r -> r.getDistance() <= distance).collect(Collectors.toList());
+        // Filter places inside specified radius.
+        results = results
+                    .stream()
+                    .filter(r -> r.getDistance() <= distance)
+                    .collect(Collectors.toList());
+
+        // Sort places by their aging value.
+        Collections.sort(results,
+                (r1, r2) -> r2.getAgingValue().compareTo(r1.getAgingValue()));
+
+        // Update aging
+        results.forEach(r -> {
+            String puri = r.getUri();
+            User user = userManager.getUser(uid);
+
+            Optional<Aging> optionalAging = agingManager.getAging(puri, uid);
+            // If it's not present, add it with new value.
+            if (!optionalAging.isPresent()) {
+                agingManager.addAging(Aging.builder()
+                        .puri(r.getUri())
+                        .user(user)
+                        .value(1 - agingRate)
+                        .build());
+            }
+            // Update it with new value or delete it if lower bound is reached.
+            else {
+                Aging aging = optionalAging.get();
+                Double newValue = aging.getValue() - agingRate;
+                if (newValue <= agingValueLowerBound) {
+                    agingManager.deleteAging(aging.getAid());
+                } else {
+                    aging.setValue(newValue);
+                    agingManager.updateAging(aging);
+                }
+            }
+        });
+
+        return results;
     }
 
     /**
@@ -371,7 +431,7 @@ public class RecommenderSession {
      * @param ontClass          node to set activation
      * @param ancestorClasses   ancestors of the node
      */
-    public void activate(OntClass ontClass, ExtendedIterator<OntClass> ancestorClasses) {
+    private void activate(OntClass ontClass, ExtendedIterator<OntClass> ancestorClasses) {
         String namespace = ontClass.getNameSpace();
         List<OntClass> ancestors = filterByNamespace(namespace, ancestorClasses);
         Double currActivation = activationMap.getOrDefault(ontClass.getURI(), 0D);
@@ -385,7 +445,7 @@ public class RecommenderSession {
     /**
      * Turn all activations into 0.
      */
-    public void resetActivations() {
+    private void resetActivations() {
         @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
         for (OntClass ontClass : iterable) {
             activationMap.put(ontClass.getURI(), 0D);
@@ -395,7 +455,7 @@ public class RecommenderSession {
     /**
      * Spread activation to the network.
      */
-    public void spreadActivation() {
+    private void spreadActivation() {
         @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
         for (OntClass ontClass : iterable) {
             activate(ontClass, ontClass.listSuperClasses(true));

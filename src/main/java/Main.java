@@ -3,6 +3,7 @@ import recommender.RecommenderSession;
 import recommender.persistence.entity.ContextFactor;
 import recommender.persistence.entity.Relevance;
 import recommender.persistence.entity.User;
+import recommender.persistence.manager.AgingManager;
 import recommender.persistence.manager.ClassPropertiesManager;
 import recommender.persistence.manager.ContextManager;
 import recommender.persistence.manager.UserManager;
@@ -23,6 +24,7 @@ public class Main {
     private static ClassPropertiesManager propertiesManager;
     private static SemanticNetwork semanticNetwork;
     private static ContextManager contextManager;
+    private static AgingManager agingManager;
     private static User user;
     private static Map<String, Double> fulfillment;
     private static double latitude;
@@ -99,17 +101,15 @@ public class Main {
         propertiesManager = new ClassPropertiesManager();
         semanticNetwork = new SemanticNetwork();
         contextManager = new ContextManager();
+        agingManager = new AgingManager();
 
         recommenderSession = new RecommenderSession(
                 userManager, propertiesManager,
-                contextManager, semanticNetwork, uid);
+                contextManager, agingManager, semanticNetwork, uid);
 
         // If it is a new user, initial spreading is required
         if (newUser) {
             initialSpreading();
-            // Context factors
-            contextFactors.forEach(name -> contextManager.addContextFactor(ContextFactor.builder()
-                    .name(name).build()));
         }
 
         // User feedback
@@ -136,10 +136,13 @@ public class Main {
                 case 5:     setFulfillment();
                             break;
 
-                case 6:     initialData();
+                case 6:     loadContextFactors();
                             break;
 
-                case 7:     List<Map.Entry<String, Double>> entryList =
+                case 7:     loadRelevances();
+                            break;
+
+                case 8:     List<Map.Entry<String, Double>> entryList =
                                 recommenderSession.getRecommendedClasses(fulfillment);
                             for (Map.Entry e : entryList ) {
                                 String uri = (String) e.getKey();
@@ -153,7 +156,7 @@ public class Main {
                             }
                             break;
 
-                case 8:     System.out.print("Type your latitude, longitude and then the maximum distance: ");
+                case 9:     System.out.print("Type your latitude, longitude and then the maximum distance: ");
                             latitude = scanner.nextDouble();
                             longitude = scanner.nextDouble();
                             distance = scanner.nextDouble();
@@ -170,10 +173,11 @@ public class Main {
                 "2: Update preference of a POI\n" +
                 "3: Export JSON\n" +
                 "4: Initial spreading\n" +
-                "5: Set fulfillment of a context factor\n" +
-                "6: Load initial data\n" +
-                "7: Get recommendation\n" +
-                "8: Set location");
+                "5: Set fulfillment of context factors\n" +
+                "6: Load context factors\n" +
+                "7: Load relevances\n" +
+                "8: Get recommendation\n" +
+                "9: Set location");
     }
 
     private static void askForPreference() {
@@ -209,7 +213,13 @@ public class Main {
         }
     }
 
-    private static void initialData() {
+    private static void loadContextFactors() {
+        // Context factors
+        contextFactors.forEach(name -> contextManager.addContextFactor(ContextFactor.builder()
+                .name(name).build()));
+    }
+
+    private static void loadRelevances() {
 
         // Relevances
         for (int i=0; i<baseUris.size(); i++) {

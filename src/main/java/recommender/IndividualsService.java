@@ -19,7 +19,7 @@ import java.util.List;
 @Getter
 @Setter
 public class IndividualsService {
-    public static String serviceURI = "http://localhost:3030/datatourisme/query";
+    public static String serviceURI = "http://localhost:3030/Datatourisme/query";
     public static String preffixes = "PREFIX datatourisme: <https://www.datatourisme.gouv.fr/ontology/core#>\n" +
             "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
             "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n" +
@@ -37,8 +37,7 @@ public class IndividualsService {
                         "  \n" +
                         "  filter(?latitude <= \"%s\"^^xsd:decimal && ?latitude >= \"%s\"^^xsd:decimal && " +
                         "         ?longitude <= \"%s\"^^xsd:decimal && ?longitude >= \"%s\"^^xsd:decimal)" +
-                        "}"+
-                        "LIMIT 5", uriSuperClass, maxBound.getLatitudeInDegrees(), minBound.getLatitudeInDegrees(),
+                        "}", uriSuperClass, maxBound.getLatitudeInDegrees(), minBound.getLatitudeInDegrees(),
                 maxBound.getLongitudeInDegrees(), minBound.getLongitudeInDegrees());
 
         try (QueryExecution q = QueryExecutionFactory.sparqlService(serviceURI, query)) {
