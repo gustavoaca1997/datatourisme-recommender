@@ -9,8 +9,8 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="recommender-system" />
         <module name="datatourisme-recommender" />
+        <module name="recommender-system" />
       </profile>
     </annotationProcessing>
   </component>

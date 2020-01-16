@@ -13,6 +13,8 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -47,7 +49,7 @@ public class ClassPropertiesManager {
         return pid;
     }
 
-    public Set<ClassProperties> listClassPropertiesByUser(Integer uid) {
+    public Set<ClassProperties> listClassPropertiesByUserAsSet(Integer uid) {
         Transaction tx = null;
         //noinspection UnusedAssignment
         Set<ClassProperties> classPropertiesSet = Collections.emptySet();
@@ -62,6 +64,19 @@ public class ClassPropertiesManager {
             throw e;
         }
         return classPropertiesSet;
+    }
+
+    public Map<String, ClassProperties> listClassPropertiesByUserAsMap(Integer uid) {
+        //noinspection UnusedAssignment
+        Map<String, ClassProperties> classPropertiesMap = new HashMap<>();
+        try (Session session = HibernateUtil.openSession()) {
+            User user = session.get(User.class, uid);
+            Set<ClassProperties> classPropertiesSet = user.getClassPropertiesSet();
+            classPropertiesSet.forEach(
+                    p -> classPropertiesMap.put(p.getUri(), p)
+            );
+        }
+        return classPropertiesMap;
     }
 
     public ClassProperties getClassProperties(Integer pid) {

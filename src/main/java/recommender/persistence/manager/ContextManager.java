@@ -23,17 +23,20 @@ public class ContextManager {
     public Integer addContextFactor(ContextFactor contextFactor) {
         Transaction tx = null;
         Integer cid;
-
-        try (Session session = HibernateUtil.openSession()) {
+        Session session = HibernateUtil.openSession();
+        try {
             tx = session.beginTransaction();
             cid = (Integer) session.save(contextFactor);
             tx.commit();
 
             return cid;
-        } catch (HibernateException e) {
-
+        }
+        catch (HibernateException e) {
             if (tx != null) tx.rollback();
             throw e;
+        }
+        finally {
+            session.close();
         }
     }
 
@@ -41,7 +44,8 @@ public class ContextManager {
         Transaction tx = null;
         Integer rid;
 
-        try (Session session = HibernateUtil.openSession()) {
+        Session session = HibernateUtil.openSession();
+        try {
             tx = session.beginTransaction();
 
             Integer cid = relevance.getContextFactor().getCid();
@@ -63,10 +67,12 @@ public class ContextManager {
 
             return rid;
         } catch (HibernateException e) {
-
             if (tx != null) tx.rollback();
             throw e;
+        } finally {
+            session.close();
         }
+
     }
 
     public ContextFactor getContextFactor(Integer cid) {
