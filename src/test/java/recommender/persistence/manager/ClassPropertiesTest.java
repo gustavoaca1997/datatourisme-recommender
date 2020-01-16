@@ -38,7 +38,7 @@ public class ClassPropertiesTest {
     @After
     public void cleanPropertiesUp() {
         User user = userManager.getUser(admin.getUid());
-        Set<ClassProperties> set = classPropertiesManager.listClassPropertiesByUser(user.getUid());
+        Set<ClassProperties> set = classPropertiesManager.listClassPropertiesByUserAsSet(user.getUid());
         set.forEach(
                 props -> classPropertiesManager.deleteClassProperties(props.getPid())
         );
@@ -125,7 +125,7 @@ public class ClassPropertiesTest {
                         .build()
         );
         createdPropsList.forEach(classPropertiesManager::addClassProperties);
-        List<String> fetchedPropsList = classPropertiesManager.listClassPropertiesByUser(admin.getUid())
+        List<String> fetchedPropsList = classPropertiesManager.listClassPropertiesByUserAsSet(admin.getUid())
                 .stream().map(ClassProperties::getUri).collect(Collectors.toList());
         Assert.assertNotNull("Fetched Props are null", fetchedPropsList);
         Assert.assertEquals("List don't match", 3, fetchedPropsList.size());

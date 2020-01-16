@@ -142,18 +142,10 @@ public class Main {
                 case 7:     loadRelevances();
                             break;
 
-                case 8:     List<Map.Entry<String, Double>> entryList =
-                                recommenderSession.getRecommendedClasses(fulfillment);
-                            for (Map.Entry e : entryList ) {
-                                String uri = (String) e.getKey();
-                                Double rating = (Double) e.getValue();
-                                List<RDFResult> results = recommenderSession.getRecommendedIndividuals(
-                                        uri, latitude, longitude, distance);
-                                if (results.size() > 0) {
-                                    System.out.println(String.format("\n%s, rating: %s:", uri, rating));
-                                    System.out.println(results);
-                                }
-                            }
+                case 8:     List<RDFResult> results =
+                                recommenderSession
+                                        .getRecommendedIndividuals(fulfillment, latitude, longitude, distance);
+                            results.forEach(System.out::println);
                             break;
 
                 case 9:     System.out.print("Type your latitude, longitude and then the maximum distance: ");

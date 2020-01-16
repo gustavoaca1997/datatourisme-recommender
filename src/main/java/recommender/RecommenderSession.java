@@ -330,11 +330,13 @@ public class RecommenderSession {
      * @param fulfillment       A map of {@code ContextFactor} to level of fulfillment.
      * @return                  A list ordered by activion * preference * confidence.
      */
-    public List<Map.Entry<String, Double>> getRecommendedClasses(Map<String, Double> fulfillment) {
+    private Map<String, Double> getClassRatings(Map<String, Double> fulfillment) {
+        System.out.println("Get recommended classes");
         resetActivations();
 
         // Update activations for ontology classes related explicitly with the
         // context factors.
+        System.out.println("Update activations according to fulfillment");
         List<Relevance> relevanceList = contextManager.listRelevancesByUserId(uid);
         relevanceList.forEach(r ->
                 activationMap.put(
@@ -344,8 +346,9 @@ public class RecommenderSession {
         spreadActivation();
 
         // Filter not sink nodes out
+        System.out.println("Filter not sink nodes");
         List<Map.Entry<String, Double> > entryList = new ArrayList<>(activationMap.entrySet());
-        entryList = entryList
+        Map<String, Double> ratingsMap = entryList
                 .stream()
                 .filter(entry ->
                         semanticNetwork
@@ -353,48 +356,74 @@ public class RecommenderSession {
                                 .listSubClasses(true)
                                 .toList()
                                 .isEmpty())
-                .collect(Collectors.toList());
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         // Add preference and confidence
-        for (Map.Entry<String, Double> entry : entryList) {
+        Map<String, ClassProperties> classPropertiesMap = propertiesManager.listClassPropertiesByUserAsMap(uid);
+        for ( Map.Entry<String, Double> entry : ratingsMap.entrySet() ) {
             if (entry.getKey().equals(OntologyConstants.PLACE_URI)) continue;
-            ClassProperties properties = propertiesManager.getClassProperties(entry.getKey(), uid);
+
+            System.out.println(String.format("Add preference and confidence to %s entry", entry.getKey()));
+            ClassProperties properties = classPropertiesMap.get(entry.getKey());
             entry.setValue(entry.getValue() * properties.getPreference() * properties.getConfidence());
         }
 
-        // Order by activation * confidence * preference
-        Collections.sort(entryList, (e1, e2) -> e2.getValue().compareTo(e1.getValue()));
-
         // return OntClasses
-        return entryList;
+        return ratingsMap;
 
     }
 
-    public List<RDFResult> getRecommendedIndividuals(
-            String uriSuperClass, double latitude, double longitude, double distance
+    private List<RDFResult> getIndividualsInsideRadius(
+            Map<String, Double> classRatings, double latitude, double longitude, double distance
     ) {
         // Get results of specific class inside radius.
         GeoLocation center = GeoLocation.fromDegrees(latitude, longitude);
         GeoLocation[] boundingCoords = center.boundingCoordinates(distance, GeoLocation.EARTH_RAD);
         GeoLocation minBound = boundingCoords[0], maxBound = boundingCoords[1];
-        List<RDFResult> results = IndividualsService.getResults(uriSuperClass, maxBound, minBound).subList(0, 5);
 
-        // Set distance and aging for user to each place.
+        List<String> uriSuperClasses = new ArrayList<>(classRatings.keySet());
+        List<RDFResult> results = IndividualsService
+                .getResults(uriSuperClasses, maxBound, minBound);
+
+        // Set distance, predicted rating and aging for user to each place.
         results.forEach(r -> {
+                    // Set distance
                     GeoLocation loc = GeoLocation.fromDegrees(r.getLatitude(), r.getLongitude());
                     r.setDistance(center.distanceTo(loc, GeoLocation.EARTH_RAD));
+
+                    // Set predicted rating
+                    String uriClass = r.getUriClass();
+                    Double predictedRating = classRatings.get(uriClass);
+                    r.setPredictedRating(predictedRating);
+
+                    // Set aging value
                     r.setAgingValue(agingManager.getAgingValue(r.getUri(), uid));
                 });
 
         // Filter places inside specified radius.
-        results = results
+        return results
                     .stream()
                     .filter(r -> r.getDistance() <= distance)
                     .collect(Collectors.toList());
+    }
 
+    public List<RDFResult> getRecommendedIndividuals(
+            Map<String, Double> fulfillment, double latitude,
+            double longitude, double distance
+    ) {
+        Map<String, Double> classRatings = getClassRatings(fulfillment);
+        List<RDFResult> results = getIndividualsInsideRadius(classRatings, latitude, longitude, distance);
+
+        // TODO: Remove duplicates
         // Sort places by their aging value.
         Collections.sort(results,
-                (r1, r2) -> r2.getAgingValue().compareTo(r1.getAgingValue()));
+            (r1, r2) -> {
+                Double left = r2.getPredictedRating()*r2.getAgingValue();
+                Double right = r1.getPredictedRating()*r1.getAgingValue();
+                return left.compareTo(right);
+        });
+
+        results = results.subList(0, min(5, results.size()));
 
         // Update aging
         results.forEach(r -> {
@@ -446,6 +475,7 @@ public class RecommenderSession {
      * Turn all activations into 0.
      */
     private void resetActivations() {
+        System.out.println("Reset Activations");
         @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
         for (OntClass ontClass : iterable) {
             activationMap.put(ontClass.getURI(), 0D);
@@ -456,6 +486,7 @@ public class RecommenderSession {
      * Spread activation to the network.
      */
     private void spreadActivation() {
+        System.out.println("Spread Activation");
         @SuppressWarnings("unchecked") Iterable<OntClass> iterable = (Iterable<OntClass >) semanticNetwork;
         for (OntClass ontClass : iterable) {
             activate(ontClass, ontClass.listSuperClasses(true));
