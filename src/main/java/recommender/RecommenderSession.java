@@ -152,14 +152,14 @@ public class RecommenderSession {
      * @return new preference
      */
     private Double updatedPreference(Double oldPreference, Double assignedPreference) {
-        return min(1D, oldPreference + coopScale * assignedPreference);
+        return (1 - coopScale) * oldPreference + coopScale*assignedPreference;
     }
 
     /**
      * Computes new confidence of a node relative to an assigned new confidence.
      *
      * @param oldConfidence      current value of the confidence
-     * @param newConfidence     new or aggregated value of the condifende
+     * @param newConfidence     new or aggregated value of the confidence
      * @return new confidence
      */
     private Double updatedConfidence(Double oldConfidence, Double newConfidence) {
