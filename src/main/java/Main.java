@@ -220,11 +220,12 @@ public class Main {
                 String name = contextFactors.get(j);
                 contextManager.addRelevance(Relevance.builder()
                         .uri(uri)
-                        .value(relevances.get(j+i))
+                        .value(relevances.get(j*contextFactors.size()+i))
                         .contextFactor(contextManager.getContextFactor(name))
                         .user(user)
                         .build());
             }
         }
+
     }
 }
